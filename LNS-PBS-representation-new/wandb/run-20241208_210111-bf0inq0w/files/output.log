@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/home/woocheol/LNS-PBS-representation-new/main_nn.py", line 219, in <module>
+    if not os.path.exists('saved'):
+NameError: name 'os' is not defined
+Traceback (most recent call last):
+  File "/home/woocheol/LNS-PBS-representation-new/main_nn.py", line 219, in <module>
+    if not os.path.exists('saved'):
+NameError: name 'os' is not defined

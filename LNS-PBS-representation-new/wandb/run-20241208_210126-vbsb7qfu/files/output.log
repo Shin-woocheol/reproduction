@@ -1,0 +1,25 @@
+  0%|                                                                                                                                                                  | 0/10 [00:14<?, ?it/s]
+Traceback (most recent call last):
+  File "/home/woocheol/LNS-PBS-representation-new/main_nn.py", line 233, in <module>
+    episode_timestep, itr = run_episode(agent, M, N, exp_name, T_threshold, sample=True,
+  File "/home/woocheol/LNS-PBS-representation-new/main_nn.py", line 198, in run_episode
+    shortest_paths = compute_astar(agent_pos, total_tasks, graph)
+  File "/home/woocheol/LNS-PBS-representation-new/utils/solver_util.py", line 109, in compute_astar
+    _, dist = graph_astar(graph, ag, task[0])
+  File "/home/woocheol/LNS-PBS-representation-new/utils/astar.py", line 49, in graph_astar
+    if node in closepath:
+  File "/home/woocheol/LNS-PBS-representation-new/utils/astar.py", line 15, in __eq__
+    def __eq__(self, other):
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/home/woocheol/LNS-PBS-representation-new/main_nn.py", line 233, in <module>
+    episode_timestep, itr = run_episode(agent, M, N, exp_name, T_threshold, sample=True,
+  File "/home/woocheol/LNS-PBS-representation-new/main_nn.py", line 198, in run_episode
+    shortest_paths = compute_astar(agent_pos, total_tasks, graph)
+  File "/home/woocheol/LNS-PBS-representation-new/utils/solver_util.py", line 109, in compute_astar
+    _, dist = graph_astar(graph, ag, task[0])
+  File "/home/woocheol/LNS-PBS-representation-new/utils/astar.py", line 49, in graph_astar
+    if node in closepath:
+  File "/home/woocheol/LNS-PBS-representation-new/utils/astar.py", line 15, in __eq__
+    def __eq__(self, other):
+KeyboardInterrupt

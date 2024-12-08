@@ -1,0 +1,8 @@
+{"time":"2024-12-08T21:22:19.488855519+09:00","level":"INFO","msg":"using version","core version":"0.18.7"}
+{"time":"2024-12-08T21:22:19.488869399+09:00","level":"INFO","msg":"created symlink","path":"/home/woocheol/LNS-PBS-representation-new/wandb/run-20241208_212219-ekylb845/logs/debug-core.log"}
+{"time":"2024-12-08T21:22:19.596322033+09:00","level":"INFO","msg":"created new stream","id":"ekylb845"}
+{"time":"2024-12-08T21:22:19.596358624+09:00","level":"INFO","msg":"stream: started","id":"ekylb845"}
+{"time":"2024-12-08T21:22:19.596436485+09:00","level":"INFO","msg":"writer: Do: started","stream_id":"ekylb845"}
+{"time":"2024-12-08T21:22:19.596461845+09:00","level":"INFO","msg":"sender: started","stream_id":"ekylb845"}
+{"time":"2024-12-08T21:22:19.597870318+09:00","level":"INFO","msg":"handler: started","stream_id":"ekylb845"}
+{"time":"2024-12-08T21:22:19.906448974+09:00","level":"INFO","msg":"Starting system monitor"}

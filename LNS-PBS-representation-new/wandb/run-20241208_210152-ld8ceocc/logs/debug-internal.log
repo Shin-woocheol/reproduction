@@ -1,0 +1,8 @@
+{"time":"2024-12-08T21:01:52.68169076+09:00","level":"INFO","msg":"using version","core version":"0.18.7"}
+{"time":"2024-12-08T21:01:52.68171352+09:00","level":"INFO","msg":"created symlink","path":"/home/woocheol/LNS-PBS-representation-new/wandb/run-20241208_210152-ld8ceocc/logs/debug-core.log"}
+{"time":"2024-12-08T21:01:52.792937352+09:00","level":"INFO","msg":"created new stream","id":"ld8ceocc"}
+{"time":"2024-12-08T21:01:52.792996482+09:00","level":"INFO","msg":"stream: started","id":"ld8ceocc"}
+{"time":"2024-12-08T21:01:52.793035792+09:00","level":"INFO","msg":"writer: Do: started","stream_id":"ld8ceocc"}
+{"time":"2024-12-08T21:01:52.793049812+09:00","level":"INFO","msg":"handler: started","stream_id":"ld8ceocc"}
+{"time":"2024-12-08T21:01:52.793168522+09:00","level":"INFO","msg":"sender: started","stream_id":"ld8ceocc"}
+{"time":"2024-12-08T21:01:53.092939454+09:00","level":"INFO","msg":"Starting system monitor"}
