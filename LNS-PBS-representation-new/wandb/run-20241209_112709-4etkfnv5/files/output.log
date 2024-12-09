@@ -1,0 +1,39 @@
+ 15%|███████████████████████                                                                                                                                   | 3/20 [00:42<03:58, 14.03s/it]
+Traceback (most recent call last):
+  File "/home/woocheol/miniconda3/envs/gfnmapf/lib/python3.9/site-packages/networkx/classes/graph.py", line 1354, in neighbors
+    return iter(self._adj[n])
+KeyError: (18, 7)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/woocheol/reproduction/LNS-PBS-representation-new/main_nn.py", line 239, in <module>
+    episode_timestep, itr = run_episode(agent, M, N, exp_name, T_threshold, sample=True,
+  File "/home/woocheol/reproduction/LNS-PBS-representation-new/main_nn.py", line 202, in run_episode
+    shortest_paths = compute_astar(agent_pos, total_tasks, graph) #* 각 agent의 현재 위치에서 모든 task로의 A* 재계산.
+  File "/home/woocheol/reproduction/LNS-PBS-representation-new/utils/solver_util.py", line 109, in compute_astar
+    _, dist = graph_astar(graph, ag, task[0])
+  File "/home/woocheol/reproduction/LNS-PBS-representation-new/utils/astar.py", line 42, in graph_astar
+    for new_idx in g.neighbors(current_node.idx):
+  File "/home/woocheol/miniconda3/envs/gfnmapf/lib/python3.9/site-packages/networkx/classes/graph.py", line 1356, in neighbors
+    raise NetworkXError(f"The node {n} is not in the graph.") from err
+networkx.exception.NetworkXError: The node (18, 7) is not in the graph.
+Traceback (most recent call last):
+  File "/home/woocheol/miniconda3/envs/gfnmapf/lib/python3.9/site-packages/networkx/classes/graph.py", line 1354, in neighbors
+    return iter(self._adj[n])
+KeyError: (18, 7)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/woocheol/reproduction/LNS-PBS-representation-new/main_nn.py", line 239, in <module>
+    episode_timestep, itr = run_episode(agent, M, N, exp_name, T_threshold, sample=True,
+  File "/home/woocheol/reproduction/LNS-PBS-representation-new/main_nn.py", line 202, in run_episode
+    shortest_paths = compute_astar(agent_pos, total_tasks, graph) #* 각 agent의 현재 위치에서 모든 task로의 A* 재계산.
+  File "/home/woocheol/reproduction/LNS-PBS-representation-new/utils/solver_util.py", line 109, in compute_astar
+    _, dist = graph_astar(graph, ag, task[0])
+  File "/home/woocheol/reproduction/LNS-PBS-representation-new/utils/astar.py", line 42, in graph_astar
+    for new_idx in g.neighbors(current_node.idx):
+  File "/home/woocheol/miniconda3/envs/gfnmapf/lib/python3.9/site-packages/networkx/classes/graph.py", line 1356, in neighbors
+    raise NetworkXError(f"The node {n} is not in the graph.") from err
+networkx.exception.NetworkXError: The node (18, 7) is not in the graph.

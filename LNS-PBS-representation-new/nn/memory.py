@@ -10,9 +10,9 @@ class ReplayMemory:
 
     def push(self, experience):
         if len(self.memory) < self.capacity:
-            self.memory.append(experience)
+            self.memory.append(experience) #* 이전 param으로 받은 것을 list로 만든 것이 넘어오는데 그걸 단순히 append.
         else:
-            self.memory[self.position % self.capacity] = experience
+            self.memory[self.position % self.capacity] = experience #* mem 다 찼으면 가장 오래된 것 부터 update.
         self.position += 1
 
     def sample(self):
@@ -24,7 +24,7 @@ class ReplayMemory:
 
     def episode_sample(self):
         out = self.memory
-        return list(map(list, zip(*out)))
+        return list(map(list, zip(*out))) #* *unpack 후, zip을 하면 종류별로 여러 튜플로 묶일 듯. 거기에 list취한 거.
 
     def __len__(self):
         return len(self.memory)

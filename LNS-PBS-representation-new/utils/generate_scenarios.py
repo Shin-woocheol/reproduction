@@ -85,5 +85,6 @@ def load_scenarios(dir):
 
 if __name__ == "__main__":
     TEST = True
-    save_scenarios(itr=20, size=32, obs=20, T=1, M=20, N=50, name='_eval')
+    save_scenarios(itr=20, size=32, obs=20, T=1, M=10, N=100, name='_eval')
+    save_scenarios(itr=20, size=32, obs=20, T=1, M=10, N=100, name='')
     

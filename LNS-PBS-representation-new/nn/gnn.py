@@ -101,12 +101,15 @@ class Bipartite(nn.Module): #* GNN을 통해서 agent node embedding을 얻고 �
     """
 
     def forward(self, g: dgl.DGLGraph, nf): #* nf는 GNN을 거쳐서 생성된 node embedding.
+        '''
+        추가적인 layer를 통해서 각 task assign에 대한 score를 받고 그걸 softmax해서 policy로 반환해줌.
+        '''
         g.ndata['nf'] = nf
 
         ag_node_indices = g.filter_nodes(ag_node_func) #* agent node filtering.
         g.ndata['finished'] = g.ndata['type'] == FIN_TASK_type #* task 끝난 것만 true.
         g.update_all(message_func=self.message, reduce_func=self.reduce, apply_node_func=self.apply_node) #* 이전 push와는 달리 모든 node에 대해서 update.
-
+        #* message를 통해서 오는 것이 score. 그리고 reduce과정에서 softmax를 취해줌.
         policy = g.ndata.pop('policy')[ag_node_indices]
         return policy
 

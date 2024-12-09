@@ -1,0 +1,8 @@
+{"time":"2024-12-09T11:27:49.209561549+09:00","level":"INFO","msg":"using version","core version":"0.18.7"}
+{"time":"2024-12-09T11:27:49.209583209+09:00","level":"INFO","msg":"created symlink","path":"/home/woocheol/reproduction/LNS-PBS-representation-new/wandb/run-20241209_112749-f4ua1afa/logs/debug-core.log"}
+{"time":"2024-12-09T11:27:49.319440844+09:00","level":"INFO","msg":"created new stream","id":"f4ua1afa"}
+{"time":"2024-12-09T11:27:49.319481054+09:00","level":"INFO","msg":"stream: started","id":"f4ua1afa"}
+{"time":"2024-12-09T11:27:49.319518694+09:00","level":"INFO","msg":"sender: started","stream_id":"f4ua1afa"}
+{"time":"2024-12-09T11:27:49.319510844+09:00","level":"INFO","msg":"writer: Do: started","stream_id":"f4ua1afa"}
+{"time":"2024-12-09T11:27:49.319521914+09:00","level":"INFO","msg":"handler: started","stream_id":"f4ua1afa"}
+{"time":"2024-12-09T11:27:49.733941401+09:00","level":"INFO","msg":"Starting system monitor"}

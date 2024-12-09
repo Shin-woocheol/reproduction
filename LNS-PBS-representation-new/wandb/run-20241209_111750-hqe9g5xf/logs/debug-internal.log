@@ -1,0 +1,8 @@
+{"time":"2024-12-09T11:17:50.721464454+09:00","level":"INFO","msg":"using version","core version":"0.18.7"}
+{"time":"2024-12-09T11:17:50.721481404+09:00","level":"INFO","msg":"created symlink","path":"/home/woocheol/reproduction/LNS-PBS-representation-new/wandb/run-20241209_111750-hqe9g5xf/logs/debug-core.log"}
+{"time":"2024-12-09T11:17:50.832384238+09:00","level":"INFO","msg":"created new stream","id":"hqe9g5xf"}
+{"time":"2024-12-09T11:17:50.832436478+09:00","level":"INFO","msg":"stream: started","id":"hqe9g5xf"}
+{"time":"2024-12-09T11:17:50.832521218+09:00","level":"INFO","msg":"sender: started","stream_id":"hqe9g5xf"}
+{"time":"2024-12-09T11:17:50.832546149+09:00","level":"INFO","msg":"writer: Do: started","stream_id":"hqe9g5xf"}
+{"time":"2024-12-09T11:17:50.832552559+09:00","level":"INFO","msg":"handler: started","stream_id":"hqe9g5xf"}
+{"time":"2024-12-09T11:17:51.152864178+09:00","level":"INFO","msg":"Starting system monitor"}

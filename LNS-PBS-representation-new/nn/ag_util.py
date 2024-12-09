@@ -81,7 +81,7 @@ def convert_dgl(nx_g, agent_pos, task_pos, task_finished=[], shortest_path=None)
             lambda edges: {'dist': (abs(edges.src['loc'] - edges.dst['loc'])).sum(-1)})
     else: #* A* 계산한 거 있으면, edge에 dist라는 속성으로는 A* 넣어주고, dist_m이라는 속성으로는 menhatten넣어줌.
         shortest_path = shortest_path - 1
-        bipartite_g.edata['dist'] = torch.from_numpy(shortest_path.T.reshape(-1)) / 32
+        bipartite_g.edata['dist'] = torch.from_numpy(shortest_path.T.reshape(-1)) / 32 #! 여기도 size
         bipartite_g.apply_edges(
             lambda edges: {'dist_m': (abs(edges.src['loc'] - edges.dst['loc'])).sum(-1)})
 

@@ -25,7 +25,7 @@ def run_episode(agent, M, N, exp_name, T_threshold, sample=True, scenario_dir=No
     해당 함수에서는 한 episode를 돌리는 것인데, 하나의 policy를 이용해서, 각 agent에 대해 task를 assign해줌.
     그리고 수행을 하는데 있어서 threshold보다 높게 남은 것은 다시 reschdule해주는 방식임.
     '''
-    actions = [[] for _ in range(20)] #! 이게 각 agent마다 바로 다음에 끝날 task의 idx넣는 거라 range가 num of agent가 되야함.
+    actions = [[] for _ in range(M)] #! 이게 각 agent마다 바로 다음에 끝날 task의 idx넣는 거라 range가 num of agent가 되야함.
     scenario = load_scenarios(scenario_dir) #* map, agent, task 위치 assign된 것.
     task_finished_bef = np.array([False for _ in range(N)]) #* task마다 complete check array인듯.
     grid, graph, agent_pos, total_tasks = scenario[0], scenario[1], scenario[2], scenario[3]
@@ -150,7 +150,7 @@ def run_episode(agent, M, N, exp_name, T_threshold, sample=True, scenario_dir=No
         terminated = all(task_finished_aft) #* 모든 task가 finished인지 check.
 
         # TODO: training detail
-        if sample: #* score를 prob삼아서 sampling을 통해 action을 정한 경우. replay_mem에 저장.
+        if sample: #* score를 prob삼아서 sampling을 통해 action을 정한 경우. replay_mem에 저장. training에서는 tr
             agent.push(g, best_ordered_joint_action, ag_order, deepcopy(task_finished_bef), next_t, terminated)
         #* bipartite graph, 현재 agent별 assigned task, 아마 priority, 이전 task_finished정보, 바로 다음 task끝나는 step, 종료 정보 를 buffer에 담음.
         if VISUALIZE:
@@ -210,17 +210,18 @@ if __name__ == '__main__':
     #! main_nn.py를 오류 없이 실행하기 위해서는 아래 sample_per_epoch의 수 만큼의 scenario가 존재하는지 확인하고
     #! _eval scenario또한 그 수 만큼 존재하는지 확인해줘야힘.
     epoch = 1000
-    sample_per_epoch = 20 #! 이것도 senario 몇개 만들었는지에 따라서 조절 해줘야함.
+    sample_per_epoch = 5 #! 이것도 senario 몇개 만들었는지에 따라서 조절 해줘야함.
 
-    #M, N = 10, 20
-    M, N = 20, 50
+    M, N = 10, 20
+    # M, N = 20, 50
+    n_sample = 1
     T_threshold = 10  # N step fwd #*이정도 step 앞에서도 task가 종료되지 않는 경우, 다시 scheduling하겠다는 것.
     agent = Agent() #* 이렇게 하면 difault gnn layer 1
     # agent.load_state_dict(torch.load('saved/20230220_1424.th'))
     n_eval = 1 #* max score로 action 즉, task를 정하니까 한번만 수행하면 되는 듯.
     best_perf = 1000000
     exp_name = datetime.now().strftime("%Y%m%d_%H%M")
-    wandb.init(project='etri-mapf')
+    wandb.init(project='etri-mapf', group=f"{M}_{N}_nsam_{n_sample}_spe_{sample_per_epoch}", name=f"{M}_{N}_{n_sample}_{sample_per_epoch}_{exp_name}")
     
     if not os.path.exists('saved'):
         os.makedirs('saved')
