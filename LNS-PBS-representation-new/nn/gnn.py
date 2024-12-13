@@ -25,8 +25,9 @@ class GNN(nn.Module):
     def forward(self, g, nf, ef):
         nf_prev = nf
         for layer in self.layers:
-            nf = layer(g, nf_prev, ef) #* bipartite graph, node feature, edge feature같이 넘김.
-            if self.residual:
+            #? 왜 graph를 그냥 넘겨버리지..?? => GNNLayer에서 graph를 이용해서 message passing하기 때문.  
+            nf = layer(g, nf_prev, ef) #* bipartite graph, node feature, edge feature같이 넘김. 
+            if self.residual: #* 이 부분이 각 agent가 더 다른 embedding을 갖게 해줄 수 잇는 부분인듯.
                 nf_prev = nf + nf_prev
             else:
                 nf_prev = nf
@@ -42,29 +43,61 @@ class GNNLayer(nn.Module):
         self.edge_embedding = nn.Sequential(nn.Linear(in_dim * 2 + ef_dim, out_dim, bias=False),
                                             nn.LeakyReLU())
 
+    #! 수정 - reverse edge를 추가해서 message passing을 하게 함으로써, task embedding은 서로 더 달라질 수 있음. distance가 다르니까.
+    #! 그리고 push -> update all로의 변경을 통해 task embedding이 서로 다르게 바꿔줌.
     def forward(self, g: dgl.DGLGraph, nf, ef):
+        g_copy = g.clone()
+        g_copy.ndata['nf'] = nf
+        g_copy.edata['ef'] = ef
         g.ndata['nf'] = nf
         g.edata['ef'] = ef
-        task_node_idx = g.filter_nodes(task_node_func) #* task type에 해당하는 노드 필터링. 2니까 task면서 complete되지 않은거.
-        g.push(u=task_node_idx,
-               message_func=self.message_func,
-               reduce_func=self.reduce_func,
-               apply_node_func=self.apply_node_func) #* message passing.
-        """
-        u : message passing 시작 노드 집합
-        message_func : 각 edge에서의 message 생성 정의
-        reduce_func : target node에서 받은 message aggregation 방법 정의
-        apply_node_func : message를 이용해서 node feature update방법 정의
-        
-        task node가 연결된 엣지를 따라 message 생성 후 target node로 전달.
-        agent node에 대해서만 apply_node_func를 통해 embedding 됨.
-        """
 
-        out_nf = g.ndata.pop('out_nf') #* update된 node feature pop
-        # print(f"out_nf : {out_nf}\n shape : {out_nf.shape}") torch.Size([71, 128]) agent 20 + task 50 + dummy 1 그리고 agent만 update됨.
+        src, dst = g_copy.edges()
+        num_edges = len(src)
+        g_copy.add_edges(dst, src) #reverse edge추가
+        g_copy.edata['ef'][num_edges:] = g_copy.edata['ef'][:num_edges] #feature복사
+
+        # src, dst = g_copy.edges()
+        # for edge_id, (s, d) in enumerate(zip(src.tolist(), dst.tolist())):
+        #     print(f"Edge ID: {edge_id}, Source: {s}, Destination: {d}, Feature: {g_copy.edata['ef'][edge_id]}")
+
+        g_copy.update_all(message_func=self.message_func,
+               reduce_func=self.reduce_func,
+               apply_node_func=self.apply_node_func)
+        
+        out_nf = g_copy.ndata.pop('out_nf')
         g.ndata.pop('nf')
         g.edata.pop('ef')
+
         return out_nf
+
+    # def forward(self, g: dgl.DGLGraph, nf, ef):
+    #     g.ndata['nf'] = nf
+    #     g.edata['ef'] = ef
+    #     task_node_idx = g.filter_nodes(task_node_func) #* task type에 해당하는 노드 필터링. 2니까 task면서 complete되지 않은거.
+    #     g.push(u=task_node_idx, #! push로 하게 되면 apply node를 통한 node embedding도 agent node에만 진행됨.
+    #            message_func=self.message_func,
+    #            reduce_func=self.reduce_func,
+    #            apply_node_func=self.apply_node_func) #* message passing.
+    #     """
+    #     u : message passing 시작 노드 집합
+    #     message_func : 각 edge에서의 message 생성 정의
+    #     reduce_func : target node에서 받은 message aggregation 방법 정의
+    #     apply_node_func : message를 이용해서 node feature update방법 정의
+        
+    #     task node가 연결된 엣지를 따라 message 생성 후 target node로 전달.
+    #     agent node에 대해서만 apply_node_func를 통해 embedding 됨.
+    #     """
+
+    #     out_nf = g.ndata.pop('out_nf') #* update된 node feature pop
+    #     # print(f"out_nf : {out_nf}\n shape : {out_nf.shape}") torch.Size([71, 128]) agent 20 + task 50 + dummy 1 그리고 agent만 update됨.
+    #     g.ndata.pop('nf')
+    #     g.edata.pop('ef')
+    #     torch.set_printoptions(threshold=torch.inf)
+    #     print(f"out_nf : {out_nf}, shape : {out_nf.shape}")
+    #     #! out_nf가 task에 대해서는 message passing을 받지 못하기 때문에 0으로 설정되어있음.
+    #     #! 그렇기 때문에 policy에서는 각 task별로 구분을 하지 못하게 됨.
+    #     return out_nf
 
     def message_func(self, edges):
         ef = torch.concat([edges.src['nf'], edges.dst['nf'], edges.data['ef']], -1) #* 두 node의 feature와 edge feature를 concat
@@ -85,10 +118,18 @@ class Bipartite(nn.Module): #* GNN을 통해서 agent node embedding을 얻고 �
     def __init__(self, embedding_dim):
         super(Bipartite, self).__init__()
         self.embedding_dim = embedding_dim
-        self.attention_fc = nn.Sequential(nn.Linear(2 * embedding_dim, 1, bias=False),
-                                          nn.LeakyReLU()
-                                          ) #* 두 node에 대한 embedidng을 받아서.
-
+        # self.attention_fc = nn.Sequential(nn.Linear(2 * embedding_dim, 1, bias=False),
+        #                                   nn.LeakyReLU()
+        #                                   ) #* 두 node에 대한 embedidng을 받아서.
+        #! 수정.
+        self.attention_fc = nn.Sequential(
+            nn.Linear(2 * embedding_dim, 1, bias=False),
+            nn.BatchNorm1d(1),  # Add batch normalization #! 해주면 score가 줄어드는 속도가 늦춰짐. -> 기존 정수부분에서 차이가 나던 score를 소수부분에서 차이가 나주도록 함. 
+            #! 정수만큼 차이가 나게 되면 softmax특성상 값으로 특정수 제외 나머지는 매우 작은 실수를 갖게 됨. #? 그래서 task간 차이를 많이 갖도록 하니까 학습에 도움이 되는 부분 아닌가? 그럼 오히려 bathnormalization이 학습을 느리게 한거고 근본적인 문제는 dummy task인 것 아닌가?
+            #! 학습이 dummy task의 score를 높이는 방향으로 가고, dummy task의 score만 높다보니 softmax하면 나머지 task의 확률이 너무 작아짐. -> 많이 차이 날수록 나머지 task는 호가률이 0으로 수렴하다가 사라짐.
+            #! 하지만 batch normalize를 햇을 때의 문제점은, score가 소숫점 수준으로 작아져버리면 task간의 차이가 너무 안나져서 task를 고를 확률이 동일해짐
+            nn.LeakyReLU()
+        )
         self.ag_score = nn.Sequential(nn.Linear(embedding_dim, 1, bias=False), nn.LeakyReLU())
 
         # Todo:transformer
@@ -142,13 +183,19 @@ class Bipartite(nn.Module): #* GNN을 통해서 agent node embedding을 얻고 �
         return policy, ag_policy
 
     def message(self, edges): #? 여기 마치 bipartite graph에서 task -> agent로의 edge만 남아있는 것 같이 짰음. 확인해야함.
-        src = edges.src['nf']
-        dst = edges.dst['nf']
-        m = torch.cat([src, dst], dim=1)
+        src = edges.src['nf']  # edge 수 x embedding dim #! 이게 전부 0임.
+        dst = edges.dst['nf'] #* 사실상 각 task를 정할 때, 달라지는 부분은 task의 좌표만 달라짐. #edge 수 x embedding dim
+        m = torch.cat([src, dst], dim=1) #? 이럼 사실상 agent는 message passing되서 update된거랑 task는 그냥 좌표인데
+        # print(f"src nf : {edges.src['nf']}, dst nf : {edges.dst['nf']}, m : {m}")
         score = self.attention_fc(m) #* 이 layer를 통해서 각 agent는 각 task에 대한 score 예측을 받음.
+        # print(f"score : {score}")
         task_finished = edges.src['finished']
         # score = score - inf * task_finished.bool()
         score[task_finished.bool()] = -inf #* finished task라면 -inf score.
+        # policy_output_path = "policy_output.txt"
+        # torch.set_printoptions(threshold=torch.inf, linewidth=1000000)
+        # with open(policy_output_path, "a") as f:
+        #     f.write(f"src nf : {edges.src['nf']} shape : {edges.src['nf'].shape}\n dst nf : {edges.dst['nf']} shape : {edges.dst['nf'].shape}\n m : {m}\n score : {score} shape : {score.shape}")
 
         # Todo:self-attention
         # K = self.K(m)
@@ -156,12 +203,18 @@ class Bipartite(nn.Module): #* GNN을 통해서 agent node embedding을 얻고 �
         #
         # score = (K * Q).sum(-1) / self.embedding_dim  # shape = (ag, task)
         # policy = torch.softmax(A, -1)
-
+        # print(f"messaged score : {score}")
         return {'score': score} #* 즉, 모든 노드는 모든 task에 대해서 score를 받음.
 
     def reduce(self, nodes):
         score = nodes.mailbox['score']
+        #! 수정 dummy task를 softmax에서 0으로 만들기 위함.
+        ###
+        # score[:, -1, -1] = -inf
+        ####
+        print(f"reduced score : {score}")
         policy = torch.softmax(score, 1).squeeze() #* 각 task에 대한 score를 softmax. 이게 각 agent가 각 task를 정할 확률인듯.
+        print(f"reduced policy : {policy}")
         return {'policy': policy}
 
     def apply_node(self, nodes):

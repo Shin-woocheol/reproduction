@@ -2,6 +2,7 @@ import itertools
 import dgl
 import torch
 import torch.nn as nn
+import numpy as np
 
 from nn.gnn import GNN, Bipartite
 from nn.memory import ReplayMemory
@@ -19,23 +20,35 @@ class Agent(nn.Module):
 
         self.replay_memory = ReplayMemory(capacity=memory_size, batch_size=batch_size) #* memsize를 50000하면 절대 안넘칠듯. schedule update시마다 mem에 넣으니까.
 
-        self.optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        # self.optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        # self.optimizer = torch.optim.Adam(self.parameters(), lr=1e-4)
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=5e-3)
         self.losses = []
 
     def forward(self, g, ag_order, continuing_ag, joint_action_prev, sample=True):
         # bs = g.batch_size
         n_ag = len(ag_order)
         policy = self.get_policy(g) #* 각 agent는 각 task에 대한 score를 가지고 있음.
-        # print(f"policy : {policy}\n shape : {policy.shape}") torch.Size([20, 51]
+        print(f"policy : {policy}\n shape : {policy.shape}") #torch.Size([20, 51]
         # print(f"policy : {policy[0]}")
         policy_temp = policy.clone().reshape(n_ag, -1)
         out_action = []
         for itr in range(n_ag):
             policy_temp[:, -1] = 1e-5  # dummy node 점수 보정
+            #! 수정
+            ###
+            # policy_temp[:, -1] = np.finfo(np.float32).tiny.item()
+            ###
             agent_idx = ag_order[itr]
             # TODO: normalize prob?
 
             selected_ag_policy = policy_temp[agent_idx]
+            #! 수정 - dummy task제외 positive 확률을 갖는 것에 대해서 1e-5 더해줌. 다른 task의 확률이 dummy task보다 너무 작게되어 학습이 안되는 경우를 방지하기 위함.
+            ###
+            mask = (selected_ag_policy > 0)
+            mask[-1] = False
+            selected_ag_policy[mask] += 1e-5
+            ###
             if sample: #* 확률로 sampling할지, max score를 뽑을지.
                 action = torch.distributions.Categorical(selected_ag_policy).sample()
             else:
@@ -74,9 +87,11 @@ class Agent(nn.Module):
         nf, ef = self.generate_feature(g)  # one-hot encoded feature 'type'
         nf = self.embedding(nf) #* normalized된 좌표를 받아서 embedding_dim으로 embed
         out_nf = self.gnn(g, nf, ef) #* agent node에 대해서 node embedding이 담긴 tensor. (전체 node x embedding_dim)이지만 agent node것만 update되어있음.
+        # 여기까지 오면 agent node의 feature는 task로 부터 message passing받았음.
         policy = self.bipartite_policy(g, out_nf) #* 각 node에 대해서 task에 대한 softmax score 반환 #? bipartite graph에서 task -> node edge만 존재하는지 확인해야함.
         policy[:, -1] = 1e-5 #* dummy task에 대한 score 보정 #? dummy가 왜 필요한거지? 선택하지 못하게 하는 것 같은데
-
+        #! 전부 다 dummy task로 assign되는 경우가 있어서 dummy의 score를 최소값으로 잡아줌.
+        # policy[:, -1] = np.finfo(np.float32).tiny.item()
         return policy
 
     def generate_feature(self, g):
@@ -155,43 +170,62 @@ class Agent(nn.Module):
         next_t = torch.tensor(next_t) #* 가장 빨리 끝나는 다음 task 종료까지의 step. (iter,)
         #* 지금 next_t를 사실상 reward로 사용하고 있음. 이거를 합치면 makespan이 되는 것은 맞으니까.
         #* 그럼 이것도 기존 REINFORCE같이 gamma를 넣은 return으로 만들고 나서 mean을 해야하는 것 아닌가?
+        #! 수정
         ###
-        gamma = 0.99
-        ret = torch.clone(next_t)
-        for i in reversed(range(len(next_t) - 1)):
-            ret[i] = next_t[i] + gamma * ret[i + 1]
-        policy = self.get_policy(gs) #* (iter*num_agent x task+1)
-        print(f"policy : {policy}")
-        _pol = policy.gather(-1, all_action) #* 해당하는 prob고름. (iter*num_agent x 1)
+        # gamma = 0.99
+        # ret = torch.clone(next_t)
+        # for i in reversed(range(len(next_t) - 1)):
+        #     ret[i] = next_t[i] + gamma * ret[i + 1]
+        # policy = self.get_policy(gs) #* (iter*num_agent x task+1)
+        # torch.set_printoptions(threshold=torch.inf)
+        # print(f"policy : {policy}, shape : {policy.shape}")
+        # _pol = policy.gather(-1, all_action) #* 해당하는 prob고름. (iter*num_agent x 1)
 
-        _pol = _pol.log()
-        _pol = _pol.view(bs, -1)  # reshape to (iteration, num_agent)
-        joint_log_prob = _pol.sum(dim=1)
+        # _pol = _pol.log()
+        # _pol = _pol.view(bs, -1)  # reshape to (iteration, num_agent)
+        # joint_log_prob = _pol.sum(dim=1)
 
-        _logit = (ret - baseline) * joint_log_prob
-        loss = _logit.mean() #* return을 minimize하고 싶은 것이어서 - 붙이면 안됨.
-        self.losses.append(loss)
-        ###
-
-        # policy = self.get_policy(gs)  # shape = bs * M, N #* 하면, 각 agent가 각 task에 가지는 score가 softmax된 것.
-        # _pol = policy.gather(-1, all_action)
-        # _pol = _pol.log() #* log policy 만듬.
-        # # _pol[all_action == 20] = 0 #* dummy task에 대해서 0으로 처리하는 부분 같은데, 이러면 task를 받아왔어야지. 
-        # #! task 수에 따라서 dummy index는 달라져야함. 
-        # _pol = _pol.reshape(bs, -1) + 1e-4
-
-        # _logit = ((next_t - baseline).unsqueeze(-1) * _pol).mean(-1)
-        # loss = _logit.mean()
-        # # _logit = (next_t - baseline).sum(-1) * _pol.sum()
-        # # loss = _logit  # .mean()
+        # _logit = (ret - baseline) * joint_log_prob
+        # loss = _logit.mean() #* return을 minimize하고 싶은 것이어서 - 붙이면 안됨.
         # self.losses.append(loss)
+        ###
+
+        policy = self.get_policy(gs)  # shape = bs * M, N #* 하면, 각 agent가 각 task에 가지는 score가 softmax된 것.
+        _pol = policy.gather(-1, all_action)
+        _pol = _pol.log() #* log policy 만듬.
+        _pol[all_action == 20] = 0 #* dummy task에 대해서 0으로 처리하는 부분 같은데, 이러면 task를 받아왔어야지. 
+        #! task 수에 따라서 dummy index는 달라져야함. 
+        _pol = _pol.reshape(bs, -1) + 1e-4
+
+        _logit = ((next_t - baseline).unsqueeze(-1) * _pol).mean(-1)
+        loss = _logit.mean()
+        # _logit = (next_t - baseline).sum(-1) * _pol.sum()
+        # loss = _logit  # .mean()
+        self.losses.append(loss)
 
         # behaved_agents = all_action < 20
+        # ### #! shape안맞다고 해서 추가한 것.
+        # behaved_agents = behaved_agents.reshape(_pol.shape)
+        # ###
         # selected_ag_pol = _pol[behaved_agents]
 
         # logit_sum = (selected_ag_pol + 1e-5).log().mean()
         # cost = next_t.sum()
         # loss = (cost - baseline) * (logit_sum)
+
+
+        ### #* 이게 논문의 loss인듯.
+        # policy = self.get_policy(gs)
+        # _pol = policy.gather(-1, all_action)
+        # behaved_agents = all_action < 20
+        # selected_ag_pol = _pol[behaved_agents]
+        # logit_sum = (selected_ag_pol + 1e-5).log().mean() #? 어차피 상수 곱해주는 것이랑 같으니까 상관없나?
+        # # logit_sum = (selected_ag_pol + 1e-5).log().sum()
+        # cost = next_t.sum()
+        # loss = (cost - baseline) * (logit_sum)
+        ###
+
+
 
         # # TODO better loss design
         # if len(self.losses) > 20: #* 즉, 20 episodes마다 update를 실행하겠다는 것.

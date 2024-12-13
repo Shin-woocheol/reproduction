@@ -64,7 +64,7 @@ def convert_dgl(nx_g, agent_pos, task_pos, task_finished=[], shortest_path=None)
     # for i in range(n_ag):
     #     for _ in range(n_task):
     #         result.append(i)
-    bipartite_g = dgl.graph((src_idx, dst_idx)) #* complete bipartite graph 생성.
+    bipartite_g = dgl.graph((src_idx, dst_idx)) #* complete bipartite graph 생성. #directed bipartite graph를 만드는구나.
     # 위 함수의 동작이, 두 list의 idx가 맞게 tuple을 구성한 것을 edge로 사용하는 것.
 
     ag_type = torch.tensor([AG_type] * n_ag) # 1의 값을 가지는 elem이 n_ag개인 list.
