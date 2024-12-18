@@ -1,0 +1,19 @@
+runtime,#high-level expanded,#high-level generated,#low-level expanded,#low-level generated,solution cost,min f value,root g value, root f value,#adopt bypasses,cardinal conflicts,standard conflicts,rectangle conflicts,corridor conflicts,target conflicts,mutex conflicts,chosen from cleanup,chosen from open,chosen from focal,#solve MVCs,#merge MDDs,#solve 2 agents,#memoization,cost error,distance error,runtime of building heuristic graph,runtime of solving MVC,runtime of detecting conflicts,runtime of rectangle conflicts,runtime of corridor conflicts,runtime of mutex conflicts,runtime of building MDDs,runtime of building constraint tables,runtime of building CATs,runtime of path finding,runtime of generating child nodes,preprocessing runtime,solver name,instance name
+0.000953,1,1,262,1119,207,207,207,207,1,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,7.2e-05,2e-06,7e-06,0,0,0,0.000295,2e-06,4.4e-05,0.000123,0.000127,0.001903,WDG+R+C+T+BP with AStar,EECBS/20241218_1611.scen
+0.000326,0,1,152,624,142,142,142,142,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4e-06,0,0,0,0,0,0,0,0,0.001896,WDG+R+C+T+BP with AStar,EECBS/20241218_1611.scen
+0.000378,0,1,175,730,165,165,165,165,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4e-06,0,0,0,0,0,0,0,0,0.001904,WDG+R+C+T+BP with AStar,EECBS/20241218_1611.scen
+0.000346,0,1,171,664,153,153,153,153,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4e-06,0,0,0,0,0,0,0,0,0.001966,WDG+R+C+T+BP with AStar,EECBS/20241218_1611.scen
+0.000293,0,1,136,528,126,126,126,126,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4e-06,0,0,0,0,0,0,0,0,0.001932,WDG+R+C+T+BP with AStar,EECBS/20241218_1611.scen
+0.00073,2,3,183,743,114,114,112,114,1,1,0,0,0,1,0,0,0,1,1,0,2,0,2,0,0.000227,2e-06,7e-06,0,0,0,6.7e-05,1e-06,3.6e-05,0.00013,0.000138,0.001917,WDG+R+C+T+BP with AStar,EECBS/20241218_1611.scen
+0.000355,0,1,159,667,149,149,149,149,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5e-06,0,0,0,0,0,0,0,0,0.00191,WDG+R+C+T+BP with AStar,EECBS/20241218_1611.scen
+0.000358,0,1,164,693,154,154,154,154,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4e-06,0,0,0,0,0,0,0,0,0.001868,WDG+R+C+T+BP with AStar,EECBS/20241218_1611.scen
+0.000333,0,1,145,577,135,135,135,135,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4e-06,0,0,0,0,0,0,0,0,0.001957,WDG+R+C+T+BP with AStar,EECBS/20241218_1611.scen
+0.000314,0,1,147,591,133,133,133,133,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4e-06,0,0,0,0,0,0,0,0,0.001894,WDG+R+C+T+BP with AStar,EECBS/20241218_1611.scen
+0.000237,0,1,102,390,92,92,92,92,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3e-06,0,0,0,0,0,0,0,0,0.001946,WDG+R+C+T+BP with AStar,EECBS/20241218_1611.scen
+0.000241,0,1,111,434,101,101,101,101,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4e-06,0,0,0,0,0,0,0,0,0.00192,WDG+R+C+T+BP with AStar,EECBS/20241218_1611.scen
+0.000195,0,1,80,296,67,67,67,67,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3e-06,0,0,0,0,0,0,0,0,0.0019,WDG+R+C+T+BP with AStar,EECBS/20241218_1611.scen
+0.00017,0,1,63,226,53,53,53,53,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2e-06,0,0,0,0,0,0,0,0,0.00195,WDG+R+C+T+BP with AStar,EECBS/20241218_1611.scen
+0.000186,0,1,69,237,59,59,59,59,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3e-06,0,0,0,0,0,0,0,0,0.001899,WDG+R+C+T+BP with AStar,EECBS/20241218_1611.scen
+0.000514,1,1,96,311,50,50,50,50,1,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,4.7e-05,1e-06,3e-06,0,0,0,0.00022,2e-06,2.9e-05,8.4e-05,8.7e-05,0.001896,WDG+R+C+T+BP with AStar,EECBS/20241218_1611.scen
+9.7e-05,0,1,25,51,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1e-06,0,0,0,0,0,0,0,0,0.001891,WDG+R+C+T+BP with AStar,EECBS/20241218_1611.scen
+0.000433,0,1,182,778,172,172,172,172,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5e-06,0,0,0,0,0,0,0,0,0.001897,WDG+R+C+T+BP with AStar,EECBS/20241218_1611.scen
