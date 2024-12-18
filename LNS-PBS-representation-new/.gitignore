@@ -2,18 +2,19 @@ __pycache__/
 .git/
 .idea/
 .ipynb_checkpoints/
-
+wandb/
 # datasets
 data/
 fig/
 scenarios/
 saved/
-
+wandb/
 # MAPF solvers
 EECBS/
 exp/
 RHCR/
 DecAstar/
+EECBS/
 
 *.ipynb
 *.png

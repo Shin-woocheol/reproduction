@@ -38,18 +38,23 @@ class GNNLayer(nn.Module):
     def __init__(self, in_dim, out_dim, ef_dim):
         super(GNNLayer, self).__init__()
         self.node_embedding = nn.Sequential(nn.Linear(out_dim + in_dim, out_dim, bias=False),
+                                            nn.BatchNorm1d(out_dim),
                                             nn.LeakyReLU())
         self.edge_embedding = nn.Sequential(nn.Linear(in_dim * 2 + ef_dim, out_dim, bias=False),
+                                            nn.BatchNorm1d(out_dim),
                                             nn.LeakyReLU())
 
     def forward(self, g: dgl.DGLGraph, nf, ef):
+        
         g.ndata['nf'] = nf
         g.edata['ef'] = ef
-        task_node_idx = g.filter_nodes(task_node_func) #* task type에 해당하는 노드 필터링. 2니까 task면서 complete되지 않은거.
-        g.push(u=task_node_idx,
-               message_func=self.message_func,
-               reduce_func=self.reduce_func,
-               apply_node_func=self.apply_node_func) #* message passing.
+        # task_node_idx = g.filter_nodes(task_node_func) #* task type에 해당하는 노드 필터링. 2니까 task면서 complete되지 않은거.
+        # g.push(u=task_node_idx,
+        #        message_func=self.message_func,
+        #        reduce_func=self.reduce_func,
+        #        apply_node_func=self.apply_node_func) #* message passing.
+        g.update_all(message_func=self.message_func, reduce_func=self.reduce_func, apply_node_func=self.apply_node_func) # kyuil수정
+        
         """
         u : message passing 시작 노드 집합
         message_func : 각 edge에서의 message 생성 정의
@@ -57,11 +62,12 @@ class GNNLayer(nn.Module):
         apply_node_func : message를 이용해서 node feature update방법 정의
         
         task node가 연결된 엣지를 따라 message 생성 후 target node로 전달.
-        agent node에 대해서만 apply_node_func를 통해 embedding 됨.
+        agent node에 대해서만 apply_node_func를 통해task_completion_times embedding 됨.
         """
 
         out_nf = g.ndata.pop('out_nf') #* update된 node feature pop
         # print(f"out_nf : {out_nf}\n shape : {out_nf.shape}") torch.Size([71, 128]) agent 20 + task 50 + dummy 1 그리고 agent만 update됨.
+        
         g.ndata.pop('nf')
         g.edata.pop('ef')
         return out_nf
@@ -85,7 +91,11 @@ class Bipartite(nn.Module): #* GNN을 통해서 agent node embedding을 얻고 �
     def __init__(self, embedding_dim):
         super(Bipartite, self).__init__()
         self.embedding_dim = embedding_dim
-        self.attention_fc = nn.Sequential(nn.Linear(2 * embedding_dim, 1, bias=False),
+        self.attention_fc = nn.Sequential(nn.Linear(2 * embedding_dim, embedding_dim, bias=False),
+                                          nn.BatchNorm1d(embedding_dim),
+                                          nn.LeakyReLU(),
+                                          nn.Linear(embedding_dim, 1, bias=False),
+                                          nn.BatchNorm1d(1),
                                           nn.LeakyReLU()
                                           ) #* 두 node에 대한 embedidng을 받아서.
 
@@ -104,20 +114,24 @@ class Bipartite(nn.Module): #* GNN을 통해서 agent node embedding을 얻고 �
         '''
         추가적인 layer를 통해서 각 task assign에 대한 score를 받고 그걸 softmax해서 policy로 반환해줌.
         '''
+
         g.ndata['nf'] = nf
 
+ 
         ag_node_indices = g.filter_nodes(ag_node_func) #* agent node filtering.
         g.ndata['finished'] = g.ndata['type'] == FIN_TASK_type #* task 끝난 것만 true.
+
         g.update_all(message_func=self.message, reduce_func=self.reduce, apply_node_func=self.apply_node) #* 이전 push와는 달리 모든 node에 대해서 update.
         #* message를 통해서 오는 것이 score. 그리고 reduce과정에서 softmax를 취해줌.
         policy = g.ndata.pop('policy')[ag_node_indices]
+        
         return policy
 
     def forward_prev(self, g: dgl.DGLGraph, bipartite_g: dgl.DGLGraph, nf, ag_node_indices, task_node_indices,
                      task_finished):
         n_batch = g.batch_size
         g.ndata['nf'] = nf
-
+        
         ag_nfs = g.nodes[ag_node_indices].data['nf']
         task_nfs = g.nodes[task_node_indices].data['nf'][~task_finished]
 
@@ -162,8 +176,9 @@ class Bipartite(nn.Module): #* GNN을 통해서 agent node embedding을 얻고 �
     def reduce(self, nodes):
         score = nodes.mailbox['score']
         policy = torch.softmax(score, 1).squeeze() #* 각 task에 대한 score를 softmax. 이게 각 agent가 각 task를 정할 확률인듯.
+        
         return {'policy': policy}
-
+        
     def apply_node(self, nodes):
         return {'policy': nodes.data['policy']} #* 각 node의 policy라는 feature에 softmax score넣음.
 

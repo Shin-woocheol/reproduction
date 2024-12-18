@@ -59,13 +59,14 @@ def run_episode(agent, M, N, exp_name, T_threshold, sample=True, scenario_dir=No
             if itr > 1:
                 random.shuffle(remaining_ag_idx)
                 ag_order = np.array(continuing_ag_idx + remaining_ag_idx)
-
+  
             curr_tasks = [[] for _ in range(M)]  # in order of init agent idx
             if heuristic:
                 joint_action = agent.forward_heuristic(g, ag_order, continuing_ag, joint_action_prev, sample=sample)
             else:
                 joint_action = agent(g, ag_order, continuing_ag, joint_action_prev, sample=sample)
             #* 결국 agent를 통해서 나오는 output은 각 agent가 선택한 task list. agent를 index로 해서 value가 task index.
+           
             ordered_joint_action = [0] * M
 
             # convert action to solver format
@@ -112,8 +113,11 @@ def run_episode(agent, M, N, exp_name, T_threshold, sample=True, scenario_dir=No
 
             # Read solver output
             agent_traj = read_trajectory(solver_path + exp_name + "_paths.txt")
-            T = np.array([len(t) for t in agent_traj]) #각 agent 별 trajectory length
-
+            T = np.array([len(t) for t in agent_traj]) #각 agent 별 trajectory length # makespan
+            # T 오류 방지?
+            if T is None or len(T)==0:
+                continue
+            
             if max_T > max(T): #* sampling을 여러번 해서 best trajectory 얻음.
                 best_T = T
                 best_curr_tasks = curr_tasks
@@ -124,9 +128,10 @@ def run_episode(agent, M, N, exp_name, T_threshold, sample=True, scenario_dir=No
 
         # TODO makespan -> sum of cost
         # TODO batch training loop
-
         # Mark finished agent, finished task
+        
         next_t = best_T[best_T > 1].min() #* 각 agent의 step 수 중 1 초과인 것만 남기고 그중 min. 아 trajectory가 시작 노드부터 있어서 무조건 1임. 그래서 다음 step에 끝나는 것은 길이가 2
+        
         #* 가장 빠른 다음 끝나는 agent면서 현재 하는 task가 올바른(N이하인) 것.
         #* 아래 array는 다음 끝나는 agent flag.
         finished_ag = (best_T == next_t) * (
@@ -135,7 +140,6 @@ def run_episode(agent, M, N, exp_name, T_threshold, sample=True, scenario_dir=No
         task_finished_aft = deepcopy(task_finished_bef)
         task_finished_aft[finished_task_idx] = True #* 끝나는 task표시.
         episode_timestep += next_t - 1 #*원래 기본 trajectory가 1이니까 -1step 후에 끝나는 것.
-
         for i, _fin in enumerate(finished_ag):
             if _fin: #* true일 경우
                 actions[i].append(best_ordered_joint_action[i]) #* action에 다음에 끝나는 task담음.
@@ -196,7 +200,7 @@ def run_episode(agent, M, N, exp_name, T_threshold, sample=True, scenario_dir=No
         ag_order = np.array(continuing_ag_idx + remaining_ag_idx) #* reschedule해야하는 것을 현재 진행중인 것 뒤에 붙임.
         assert len(set(ag_order)) == M
         joint_action_prev = np.array(best_ordered_joint_action, dtype=int)
-
+        
         agent_pos = agent_pos_new #* 가장 빨리 끝나는 다음task episode time에서의 agent들의 위치.
         task_finished_bef = task_finished_aft #* 다음 time에 끝나는 것들.
         shortest_paths = compute_astar(agent_pos, total_tasks, graph) #* 각 agent의 현재 위치에서 모든 task로의 A* 재계산.
@@ -210,7 +214,7 @@ if __name__ == '__main__':
     #! main_nn.py를 오류 없이 실행하기 위해서는 아래 sample_per_epoch의 수 만큼의 scenario가 존재하는지 확인하고
     #! _eval scenario또한 그 수 만큼 존재하는지 확인해줘야힘.
     epoch = 1000
-    sample_per_epoch = 5 #! 이것도 senario 몇개 만들었는지에 따라서 조절 해줘야함.
+    sample_per_epoch = 10 #! 이것도 senario 몇개 만들었는지에 따라서 조절 해줘야함.
 
     M, N = 10, 20
     # M, N = 20, 50
@@ -226,7 +230,7 @@ if __name__ == '__main__':
     if not os.path.exists('saved'):
         os.makedirs('saved')
 
-    for e in range(epoch):
+    for e in tqdm(range(epoch)):
         epoch_perf = []
         epoch_loss = []
         epoch_itr = []
@@ -235,14 +239,16 @@ if __name__ == '__main__':
 
         # train.
         for sample_idx in tqdm(range(sample_per_epoch)):
-            scenario_dir = '323220_1_{}_{}/scenario_{}.pkl'.format(M, N, sample_idx + 1)
+            scenario_dir = '323220_1_{}_{}/scenario_{}.pkl'.format(M, N, 1)
             episode_timestep, itr = run_episode(agent, M, N, exp_name, T_threshold, sample=True,
                                                 scenario_dir=scenario_dir)
             if episode_timestep is not None: #* episode terminate 시.
+                
                 fit_res = agent.fit() #* step.
-                epoch_perf.append(episode_timestep) #* 총 걸린 시간이 makespan이니까.
-                epoch_itr.append(itr) #* 몇 번 scheduling에 들어갔는지.
-                epoch_loss = fit_res['loss'] #* 학습 loss.
+                if fit_res['loss'] is not None:
+                    epoch_perf.append(episode_timestep) #* 총 걸린 시간이 makespan이니까.
+                    epoch_itr.append(itr) #* 몇 번 scheduling에 들어갔는지.
+                    epoch_loss = fit_res['loss'] #* 학습 loss.
 
         # evaluation.
         for i in tqdm(range(n_eval)):

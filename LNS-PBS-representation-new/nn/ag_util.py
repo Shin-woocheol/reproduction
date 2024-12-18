@@ -60,10 +60,6 @@ def convert_dgl(nx_g, agent_pos, task_pos, task_finished=[], shortest_path=None)
 
     src_idx = list(range(n_ag, n_ag + n_task)) * n_ag #task
     dst_idx = [i for i in range(n_ag) for _ in range(n_task)] #agent
-    # result = []
-    # for i in range(n_ag):
-    #     for _ in range(n_task):
-    #         result.append(i)
     bipartite_g = dgl.graph((src_idx, dst_idx)) #* complete bipartite graph 생성.
     # 위 함수의 동작이, 두 list의 idx가 맞게 tuple을 구성한 것을 edge로 사용하는 것.
 
