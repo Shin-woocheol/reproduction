@@ -23,6 +23,7 @@ dec_solver_path = "DecAstar/"
 
 def run_episode(agent, M, N, exp_name, T_threshold, train=True, scenario_dir=None, VISUALIZE=False, n_sample=1):
     #* episode 처음 실행시의 init
+    episode_traj = []
     task_finished_bef = np.array([False for _ in range(N)]) #* task마다 complete check array인듯.
     scenario = load_scenarios(scenario_dir) 
     grid, graph, agent_pos, total_tasks = scenario[0], scenario[1], scenario[2], scenario[3]
@@ -114,7 +115,8 @@ def run_episode(agent, M, N, exp_name, T_threshold, train=True, scenario_dir=Non
 
         # TODO: training detail
         if train: #* score를 prob삼아서 sampling을 통해 action을 정한 경우. replay_mem에 저장. training에서는 tr
-            agent.push(g, best_curr_tasks_idx, ag_order, deepcopy(task_finished_bef), next_t, terminated)
+            # agent.push(g, best_curr_tasks_idx, ag_order, deepcopy(task_finished_bef), next_t, terminated)
+            episode_traj.append([g, best_curr_tasks_idx, next_t])
         #* bipartite graph, 현재 agent별 assigned task, 아마 priority, 이전 task_finished정보, 바로 다음 task끝나는 step, 종료 정보 를 buffer에 담음.
         if VISUALIZE:
             # visualize
@@ -124,14 +126,14 @@ def run_episode(agent, M, N, exp_name, T_threshold, train=True, scenario_dir=Non
                    task_finished=task_finished_aft)
 
         if terminated: #* 모든 task finished
-            return episode_timestep, itr
+            return episode_timestep, itr, episode_traj
 
         # agent with small T maintains previous action
         continuing_ag = (0 < best_T - next_t) * (best_T - next_t < T_threshold) 
         #* 가장 빠른 다음 task종료 후에도 trajectory움직여야 하는 것 중, threshold step보다는 적게 남은 것은 계속 수행. 아닌 것은 rescheduling.
         continuing_ag_idx = continuing_ag.nonzero()[0].tolist() #* 계속 움직이는 것 list로 만듬.
         remaining_ag = list(set(range(M)) - set(continuing_ag_idx)) #* rescheduling 해줘야 하는 agent index.
-        
+
         #* agent order는 random으로 해줌.
         random.shuffle(remaining_ag)
         remaining_ag_idx = remaining_ag
@@ -156,19 +158,31 @@ def main(args, exp_name):
     for _ in range(args.epoch):
         result = {'train_cost':[], 'train_loss':[], "train_n_assign":[], "eval_cost":[], "eval_n_assign":[]}
         #training
-        for i in tqdm(range(args.n_map_train)):
-            scenario_dir = '323220_1_{}_{}/scenario_{}.pkl'.format(args.n_agent, args.n_task, i + 1)
-            #TODO 내부 고쳐야함.
-            cost, n_assign = run_episode(agent, args.n_agent, args.n_task, exp_name, args.task_threshold, train=True, scenario_dir=scenario_dir, VISUALIZE=args.train_visualize) 
-            if cost is not None:
-                loss = agent.learn()
+        # for i in tqdm(range(args.n_map_train)):
+        #     scenario_dir = '323220_1_{}_{}/scenario_{}.pkl'.format(args.n_agent, args.n_task, i + 1)
+        #     #TODO 내부 고쳐야함.
+        #     cost, n_assign = run_episode(agent, args.n_agent, args.n_task, exp_name, args.task_threshold, train=True, scenario_dir=scenario_dir, VISUALIZE=args.train_visualize) 
+        #     if cost is not None:
+        #         loss = agent.learn()
+        #         result["train_cost"].append(cost)
+        #         result["train_n_assign"].append(n_assign)
+        #         result["train_loss"].append(loss)
+
+        for _ in range(args.batch_size):
+            for i in range(args.n_map_train):
+                scenario_dir = '323220_1_{}_{}/scenario_{}.pkl'.format(args.n_agent, args.n_task, i + 1)
+                cost, n_assign, episode_traj = run_episode(agent, args.n_agent, args.n_task, exp_name, args.task_threshold, train=True, scenario_dir=scenario_dir, VISUALIZE=args.train_visualize) 
+                agent.push(episode_traj)
                 result["train_cost"].append(cost)
                 result["train_n_assign"].append(n_assign)
-                result["train_loss"].append(loss)
+                
+        loss = agent.learn()
+        result["train_loss"].append(loss)
+
 
         for i in tqdm(range(args.n_map_eval)):
             scenario_dir = '323220_1_{}_{}/scenario_{}.pkl'.format(args.n_agent, args.n_task, i + 1)
-            cost, n_assign = run_episode(agent, args.n_agent, args.n_task, exp_name, args.task_threshold, train=False, scenario_dir=scenario_dir, VISUALIZE=args.eval_visualize)
+            cost, n_assign, _ = run_episode(agent, args.n_agent, args.n_task, exp_name, args.task_threshold, train=False, scenario_dir=scenario_dir, VISUALIZE=args.eval_visualize)
             if cost is not None:
                 result["eval_cost"].append(cost)
                 result["eval_n_assign"].append(n_assign)
@@ -190,10 +204,11 @@ if __name__ == '__main__':
     parser.add_argument('--n_agent', type = int, default= 10, help= "num of agents")
     parser.add_argument('--n_task', type = int, default= 20, help= "num of tasks")
     parser.add_argument('--task_threshold', type = int, default= 10, help = "task rescheduling threshold")
-    parser.add_argument('--wandb', type = bool, default=False)
+    parser.add_argument('--wandb', type = bool, default=True)
     parser.add_argument('--eval_visualize', type = bool, default=False)
     parser.add_argument('--train_visualize', type = bool, default=False)
     parser.add_argument('--lr', type = float, default=1e-5)
+    parser.add_argument('--batch_size', type = int, default = 1)
     args = parser.parse_args()
 
     exp_name = datetime.now().strftime("%Y%m%d_%H%M")

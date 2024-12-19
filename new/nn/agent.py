@@ -79,6 +79,36 @@ class Agent(nn.Module):
         return nf, ef
     
     def learn(self, baseline=0):
+        batch_traj = self.buffer.sample()
+        total_loss = 0
+        for traj in batch_traj:
+            gs, joint_action, next_t = list(map(list, zip(*traj)))
+            gs = dgl.batch(gs)
+            joint_action = torch.tensor(joint_action) #* 각 agent에 할당된 task. (iter x num_agent) ex)18 x 10
+            all_action = joint_action.reshape(-1, 1)
+            next_t = torch.tensor(next_t) #* 가장 빨리 끝나는 다음 task 종료까지의 step. (iter,)
+
+            policy = self.get_policy(gs)  # shape = bs * M, N
+            mask = (all_action != -1)
+            valid_action = all_action[mask].reshape(-1, 1)
+            valid_policy = policy[mask.squeeze()].gather(-1, valid_action)
+            valid_policy_log = valid_policy.log()
+            pol_sum = torch.mean(valid_policy_log) #* valid action의 수가 다르니까 mean을 하는게 맞는 것 같음.
+            cost = torch.sum(next_t)
+
+            loss = cost * pol_sum
+
+            total_loss += loss
+
+        total_loss /= len(batch_traj)
+
+        self.optimizer.zero_grad()
+        total_loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.parameters(), 0.5)
+        self.optimizer.step()
+        self.buffer.clear()
+        return total_loss.item()
+
         gs, joint_action, ag_order, task_finished, next_t, terminated = self.buffer.sample() #* 한 episode에 대한 것.
         #* 즉, 각 요소마다 batch length 만큼의 요소가 잇을듯.
 
@@ -107,5 +137,8 @@ class Agent(nn.Module):
         self.optimizer.step()
         return loss.item()
 
-    def push(self, *args):
-        self.buffer.store([*args])
+    # def push(self, *args):
+    #     self.buffer.store([*args])
+    # [[],[],[]]
+    def push(self, episode_traj):
+        self.buffer.store(episode_traj)
