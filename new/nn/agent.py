@@ -73,7 +73,7 @@ class Agent(nn.Module):
         '''
         nf = g.ndata['pos']
         #* option1. use obs_proxy
-        ef = torch.stack([g.edata['astar_dist'], g.edata['man_dist']], -1)
+        ef = torch.stack([g.edata['astar_dist'], g.edata['man_dist'], g.edata['obs_proxy']], -1)
         #* option2. use astar and man only
         # ef = torch.stack([g.edata['astar_dist'], g.edata['man_dist']], -1)
         return nf, ef
@@ -97,7 +97,7 @@ class Agent(nn.Module):
         pol_sum = torch.mean(valid_policy_log) #* valid action의 수가 다르니까 mean을 하는게 맞는 것 같음.
         cost = torch.sum(next_t)
         #* option 1
-        loss = - cost * pol_sum
+        loss = -cost * pol_sum
         #* option 2
         # loss = -(1/cost * pol_sum)
 
@@ -106,7 +106,6 @@ class Agent(nn.Module):
         torch.nn.utils.clip_grad_norm_(self.parameters(), 0.5)
         self.optimizer.step()
         return loss.item()
-
 
     def push(self, *args):
         self.buffer.store([*args])

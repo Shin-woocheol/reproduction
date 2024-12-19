@@ -39,7 +39,7 @@ class GNNLayer(nn.Module):
         #                                     nn.LeakyReLU())
         # self.edge_embedding = nn.Sequential(nn.Linear(in_dim * 2 + ef_dim, out_dim, bias=False),
         #                                     nn.LeakyReLU())
-        #* option2. 모든 neural net은 MLP wit two layers of 128 unit
+        #* option2. 모든 neural net은 MLP with two layers of 128 unit
         self.node_embedding = nn.Sequential(nn.Linear(out_dim + in_dim, embedding_dim, bias=False),
                                             nn.LeakyReLU(),
                                             nn.Linear(embedding_dim, out_dim, bias=False),
@@ -54,17 +54,20 @@ class GNNLayer(nn.Module):
         dgl이 현재 task -> agent의 directed graph로 만들어졌으므로, 반대 edge추가로 undirected로 만든 후
         message passing으로 node embedding update.
         이게 논문 내용인듯.
-        option2로는 push로 agent만 update해준 후, task의 embedding은 좌표만을 이용한 embedding으로 해주는 방법도 있을듯.
         '''
         g_copy = g.clone()
         g_copy.ndata['nf'] = nf
         g_copy.edata['ef'] = ef
 
-        #* 반대 edge생성.
+        #* option 반대 edge 생성 후 message passing.
+        #* 하면 task 또한 agent와 같은 방법으로 node embedding 생성.
+        #* 안하면 task는 init embedding만 이용해서 다시 embed.
+        ###
         src, dst = g_copy.edges()
         num_edges = len(src)
         g_copy.add_edges(dst, src) #reverse edge추가
         g_copy.edata['ef'][num_edges:] = g_copy.edata['ef'][:num_edges] #feature복사
+        ###
 
         g_copy.update_all(message_func=self.message_func,
                reduce_func=self.reduce_func,
@@ -94,8 +97,10 @@ class Bipartite(nn.Module): #* GNN을 통해서 agent node embedding을 얻고 �
         #* two layers of 128 units each and LeakyRelu
         self.score_layer = nn.Sequential( #* using pair of node embedding.
             nn.Linear(2 * embedding_dim, embedding_dim, bias=False),
+            nn.BatchNorm1d(embedding_dim),
             nn.LeakyReLU(),
             nn.Linear(embedding_dim, 1, bias=False),
+            nn.BatchNorm1d(1),
             nn.LeakyReLU()
         )
         self.ag_score = nn.Sequential(nn.Linear(embedding_dim, 1, bias=False), nn.LeakyReLU())
