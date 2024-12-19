@@ -131,8 +131,7 @@ def run_episode(agent, M, N, exp_name, T_threshold, train=True, scenario_dir=Non
         #* 가장 빠른 다음 task종료 후에도 trajectory움직여야 하는 것 중, threshold step보다는 적게 남은 것은 계속 수행. 아닌 것은 rescheduling.
         continuing_ag_idx = continuing_ag.nonzero()[0].tolist() #* 계속 움직이는 것 list로 만듬.
         remaining_ag = list(set(range(M)) - set(continuing_ag_idx)) #* rescheduling 해줘야 하는 agent index.
-        #* 즉, 이번에 끝난 agent도, dummy에 들어가서 쉰 agent도 remaining_ag에 들어감.
-
+        
         #* agent order는 random으로 해줌.
         random.shuffle(remaining_ag)
         remaining_ag_idx = remaining_ag
@@ -181,8 +180,6 @@ def main(args, exp_name):
                 'train_n_assign_mean': np.mean(result["eval_n_assign"]), # 얼마나 scheduling이 일어났는지 terminate까지.
                 'eval_n_assign_mean': np.mean(result["eval_n_assign"])})
 
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--epoch', type = int, default = 1000)
@@ -205,3 +202,5 @@ if __name__ == '__main__':
 
     fix_seed(args.seed)
     main(args, exp_name)
+
+#python main.py --wandb True --n_map_train 10 --lr 0.00005

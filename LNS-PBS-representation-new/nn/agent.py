@@ -197,8 +197,13 @@ class Agent(nn.Module):
         #! task 수에 따라서 dummy index는 달라져야함. 
         _pol = _pol.reshape(bs, -1) + 1e-4
 
-        _logit = ((next_t - baseline).unsqueeze(-1) * _pol).mean(-1)
+        # _logit = ((next_t - baseline).unsqueeze(-1) * _pol).mean(-1)
+        # loss = _logit.mean()
+        #! 수정
+        ### loss의 최적값을 0으로 만들어 주기 위해서 이렇게 구현하는건?
+        _logit = -((1/(next_t - baseline)).unsqueeze(-1) * _pol).mean(-1)
         loss = _logit.mean()
+        ###
         # _logit = (next_t - baseline).sum(-1) * _pol.sum()
         # loss = _logit  # .mean()
         self.losses.append(loss)
