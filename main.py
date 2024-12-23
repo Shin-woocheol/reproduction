@@ -175,7 +175,6 @@ def run_episode(agent, M, N, exp_name, T_threshold, train=True, scenario_dir=Non
 
 def main(args, exp_name):
     device = torch.device(f"cuda:0" if torch.cuda.is_available() and args.gpu else "cpu")
-    print("device")
     agent = Agent(gpu = args.gpu).to(device)
     for _ in range(args.epoch):
         result = {'train_cost':[], 'train_loss':[], "train_n_assign":[], "eval_cost":[], "eval_n_assign":[]}
