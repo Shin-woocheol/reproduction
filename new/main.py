@@ -174,7 +174,8 @@ def run_episode(agent, M, N, exp_name, T_threshold, train=True, scenario_dir=Non
 
 
 def main(args, exp_name):
-    device = torch.device(f"cuda:0" if torch.cuda.is_available() and args.gpu == True else "cpu")
+    device = torch.device(f"cuda:0" if torch.cuda.is_available() and args.gpu else "cpu")
+    print("device")
     agent = Agent(gpu = args.gpu).to(device)
     for _ in range(args.epoch):
         result = {'train_cost':[], 'train_loss':[], "train_n_assign":[], "eval_cost":[], "eval_n_assign":[]}
@@ -224,12 +225,12 @@ if __name__ == '__main__':
     parser.add_argument('--n_agent', type = int, default= 10, help= "num of agents")
     parser.add_argument('--n_task', type = int, default= 20, help= "num of tasks")
     parser.add_argument('--task_threshold', type = int, default= 10, help = "task rescheduling threshold")
-    parser.add_argument('--wandb', type = bool, default=False)
-    parser.add_argument('--eval_visualize', type = bool, default=True)
-    parser.add_argument('--train_visualize', type = bool, default=False)
+    parser.add_argument('--wandb', action='store_true', help="Enable wandb")
+    parser.add_argument('--eval_visualize', action='store_true', help="Enable eval visualize")
+    parser.add_argument('--train_visualize', action='store_true', help="Enable train visualize")
     parser.add_argument('--lr', type = float, default=1e-5)
     parser.add_argument('--batch_size', type = int, default = 1)
-    parser.add_argument('--gpu', type = bool, default= False)
+    parser.add_argument('--gpu', action='store_true', help="Enable GPU usage")
     args = parser.parse_args()
 
     exp_name = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -240,5 +241,5 @@ if __name__ == '__main__':
     main(args, exp_name)
 
 # export CUDA_VISIBLE_DEVICES=1
-#  python main.py --wandb True --n_map_train 10 --lr 0.00005
-#  python main.py --wandb True --gpu True --batch_size 3 
+#  python main.py --wandb --n_map_train 10 --lr 0.00005
+#  python main.py --wandb --gpu --batch_size 3 
