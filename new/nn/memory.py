@@ -10,9 +10,9 @@ class ReplayMemory:
 
     def push(self, experience):
         if len(self.memory) < self.capacity:
-            self.memory.append(experience) #* 이전 param으로 받은 것을 list로 만든 것이 넘어오는데 그걸 단순히 append.
+            self.memory.append(experience)
         else:
-            self.memory[self.position % self.capacity] = experience #* mem 다 찼으면 가장 오래된 것 부터 update.
+            self.memory[self.position % self.capacity] = experience 
         self.position += 1
 
     def sample(self):

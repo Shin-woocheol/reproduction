@@ -15,7 +15,6 @@ class GNN(nn.Module):
         super(GNN, self).__init__()
         _ins = [in_dim] + [embedding_dim] * (n_layers - 1)
         _outs = [embedding_dim] * (n_layers - 1) + [out_dim]
-
         layers = []
         for _i, _o in zip(_ins, _outs): 
             layers.append(GNNLayer(_i, _o, ef_dim, embedding_dim))
@@ -35,6 +34,7 @@ class GNN(nn.Module):
 class GNNLayer(nn.Module):
     def __init__(self, in_dim, out_dim, ef_dim, embedding_dim):
         super(GNNLayer, self).__init__()
+        #* option1
         # self.node_embedding = nn.Sequential(nn.Linear(out_dim + in_dim, out_dim, bias=False),
         #                                     nn.LeakyReLU())
         # self.edge_embedding = nn.Sequential(nn.Linear(in_dim * 2 + ef_dim, out_dim, bias=False),

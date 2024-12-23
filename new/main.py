@@ -39,8 +39,6 @@ def run_episode(agent, M, N, exp_name, T_threshold, train=True, scenario_dir=Non
     g = convert_to_bipartite(graph, agent_pos, total_tasks, task_finished_bef, shortest_paths)
     
     while True:
-        """ 1.super-agent coordinates agent&task pairs """
-        # `task_selected` initialized as the `task_finished` to jointly select task at each event
         best_T = None #* 가장 늦게 끝나는 task까지의 step이 가장 작은 것.
         best_curr_tasks_idx = None #* 현재 assign한 task의 idx
         best_agent_traj = None
@@ -68,10 +66,7 @@ def run_episode(agent, M, N, exp_name, T_threshold, train=True, scenario_dir=Non
                 curr_tasks_pos[ag_idx] = [task_loc] #* 수행할 task의 좌표.
                 curr_tasks_idx[ag_idx] = action #* 선택한 task index. 0 ~ n_task-1
 
-            """ 2.pass created agent-task pairs to low level solver """
             #* 현재 task assign대로 eecbs를 위한 .scen파일 작성. #*위에서 정한 task대로 low level solver실행.
-            #! agent_pos는 agent 순서로 되어있고 curr_tasks_pos는 agent order의 순서로 되어있는데 scenario를 이렇게 짜는게 맞나?
-            #! => 아니네 curr_tasks_pos도 ag_idx로 넣어주니까 agent 순서가 맞네.
             save_scenario(agent_pos, curr_tasks_pos, exp_name, grid.shape[0], grid.shape[1])
 
             # Run solver #* low level solver 작동 step 수 및, path반환.
@@ -92,15 +87,14 @@ def run_episode(agent, M, N, exp_name, T_threshold, train=True, scenario_dir=Non
             T = np.array([len(t) for t in agent_traj]) #각 agent 별 trajectory length #* ag_idx순.
             #* sampling을 여러번 해서 best trajectory 얻음.
             if max_T > max(T): #* 가장 늦게 끝나는 task가 가장 작은 것을 best라고 함. 그치 작은 시간 내에 많이 끝나는 것이니까.
-                #! ValueError: max() arg is an empty sequence why?
                 best_T = T #* ag_idx순
                 best_curr_tasks_pos = curr_tasks_pos #* ag_idx순
                 best_agent_traj = agent_traj #* ag_idx순
                 best_curr_tasks_idx = curr_tasks_idx # agent idx에는 agent가 선택한 task idx있음. #* ag_idx순
                 max_T = max(T)
 
-        # if len(best_T[best_T > 1]) == 0: #* T가 없는 경우가 나와서 처리.
-        #     return None, None, None
+        if len(best_T[best_T > 1]) == 0: #* T가 없는 경우가 나와서 처리.
+            return None, None, None
         
         # Mark finished agent, finished task
         next_t = best_T[best_T > 1].min() #* 각 agent의 step 수 중 1 초과인 것만 남기고 그중 min. 아 trajectory가 시작 노드부터 있어서 무조건 1임. 그래서 다음 step에 끝나는 것은 길이가 2
@@ -180,7 +174,8 @@ def run_episode(agent, M, N, exp_name, T_threshold, train=True, scenario_dir=Non
 
 
 def main(args, exp_name):
-    agent = Agent()
+    device = torch.device(f"cuda:0" if torch.cuda.is_available() and args.gpu == True else "cpu")
+    agent = Agent(gpu = args.gpu).to(device)
     for _ in range(args.epoch):
         result = {'train_cost':[], 'train_loss':[], "train_n_assign":[], "eval_cost":[], "eval_n_assign":[]}
 
@@ -229,11 +224,12 @@ if __name__ == '__main__':
     parser.add_argument('--n_agent', type = int, default= 10, help= "num of agents")
     parser.add_argument('--n_task', type = int, default= 20, help= "num of tasks")
     parser.add_argument('--task_threshold', type = int, default= 10, help = "task rescheduling threshold")
-    parser.add_argument('--wandb', type = bool, default=True)
+    parser.add_argument('--wandb', type = bool, default=False)
     parser.add_argument('--eval_visualize', type = bool, default=True)
     parser.add_argument('--train_visualize', type = bool, default=False)
     parser.add_argument('--lr', type = float, default=1e-5)
     parser.add_argument('--batch_size', type = int, default = 1)
+    parser.add_argument('--gpu', type = bool, default= False)
     args = parser.parse_args()
 
     exp_name = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -243,5 +239,6 @@ if __name__ == '__main__':
     fix_seed(args.seed)
     main(args, exp_name)
 
+# export CUDA_VISIBLE_DEVICES=1
 #  python main.py --wandb True --n_map_train 10 --lr 0.00005
-#  python main.py --wandb True --batch_size 32
+#  python main.py --wandb True --gpu True --batch_size 3 

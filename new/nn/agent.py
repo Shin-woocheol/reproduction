@@ -9,25 +9,28 @@ from nn.memory import RolloutBuffer
 
 #* REINFORCE
 class Agent(nn.Module):
-    def __init__(self, embedding_dim=128, gnn_layers=1, lr = 1e-5):
+    def __init__(self, embedding_dim=128, gnn_layers=1, lr = 1e-5, gpu = False):
         super(Agent, self).__init__()
+        self.device = torch.device(f"cuda:0" if torch.cuda.is_available() and gpu == True else "cpu")
         self.embedding_dim = embedding_dim
+        #* option1
         # self.init_node_embedding = nn.Linear(2, embedding_dim) #* node feature -> init node embedding.
-        #*option2
+        #* option2
         self.init_node_embedding = nn.Sequential(
             nn.Linear(2, embedding_dim),
             nn.LeakyReLU(),
             nn.Linear(embedding_dim, embedding_dim),
             nn.LeakyReLU()
-        )
+        ).to(self.device)
         self.gnn = GNN(in_dim=embedding_dim, out_dim=embedding_dim, embedding_dim=embedding_dim, n_layers=gnn_layers,
-                       residual=True, ef_dim=3) #* ef dim 3인게, A*, menhatten, obstacle proxy 3개
-        self.bipartite_policy = Bipartite(embedding_dim)
+                       residual=True, ef_dim=3).to(self.device) #* ef dim 3인게, A*, menhatten, obstacle proxy 3개
+        self.bipartite_policy = Bipartite(embedding_dim).to(self.device)
         self.buffer = RolloutBuffer() 
         self.optimizer = torch.optim.Adam(self.parameters(), lr)
         self.losses = []
 
     def forward(self, g, ag_order, continuing_ag, joint_action_prev, train=True):
+        g = g.to(self.device)
         n_ag = len(ag_order)
         policy = self.get_policy(g) #* 각 agent는 각 task에 대한 score를 가지고 있음.
         print(f"policy : {policy}\n shape : {policy.shape}") #torch.Size([20, 51]
@@ -42,12 +45,11 @@ class Agent(nn.Module):
                 if torch.all(selected_ag_policy == 0): #* 이미 모든 task가 assign된 경우, -1로 처리.
                     out_action.append(-1)
                     continue
-
                 if train:
                     action = torch.distributions.Categorical(selected_ag_policy).sample().item()
                 else:
                     action = selected_ag_policy.argmax(-1).item()
-                    
+
             out_action.append(action)
             policy_temp[:, action] = 0 #* 선택한 action은 prob 0으로 만듬. 이렇게 해서 priority가 되네.
 
@@ -82,10 +84,10 @@ class Agent(nn.Module):
         total_loss = 0
         for traj in batch_traj:
             gs, joint_action, next_t = list(map(list, zip(*traj)))
-            gs = dgl.batch(gs)
-            joint_action = torch.tensor(joint_action) #* 각 agent에 할당된 task. (iter x num_agent) ex)18 x 10
+            gs = dgl.batch(gs).to(self.device)
+            joint_action = torch.tensor(joint_action).to(self.device) #* 각 agent에 할당된 task. (iter x num_agent) ex)18 x 10
             all_action = joint_action.reshape(-1, 1)
-            next_t = torch.tensor(next_t) #* 가장 빨리 끝나는 다음 task 종료까지의 step. (iter,)
+            next_t = torch.tensor(next_t).to(self.device) #* 가장 빨리 끝나는 다음 task 종료까지의 step. (iter,)
 
             policy = self.get_policy(gs)  # shape = bs * M, N
             mask = (all_action != -1)
@@ -99,7 +101,6 @@ class Agent(nn.Module):
             loss = -cost * pol_sum
             #* option 2
             # loss = -(1/cost * pol_sum)
-
             total_loss += loss
 
         total_loss /= len(batch_traj)
