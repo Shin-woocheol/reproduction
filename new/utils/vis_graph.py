@@ -76,7 +76,7 @@ def vis_ta(graph, agents, tasks, itr, total_tasks=None, task_finished=None):
         for t in task:
             for _t in t.values():
                 # labeldict[tuple(_t[0])] = ag_idx
-                task_color_dict[tuple(_t)] = colors[ag_idx]
+                task_color_dict[tuple(_t[0])] = colors[ag_idx]
 
     # t_colors = list()
     # for c, t in enumerate(tasks.values()):

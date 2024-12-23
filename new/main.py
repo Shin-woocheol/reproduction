@@ -16,6 +16,7 @@ from utils.solver_util import save_map, save_scenario, read_trajectory, compute_
 from utils.vis_graph import vis_ta
 from utils.utils import fix_seed
 from tqdm import tqdm
+from math import inf
 
 RANDOM = True
 solver_path = "EECBS/"
@@ -44,16 +45,16 @@ def run_episode(agent, M, N, exp_name, T_threshold, train=True, scenario_dir=Non
         best_curr_tasks_idx = None #* 현재 assign한 task의 idx
         best_agent_traj = None
         best_curr_tasks_pos = None #* 현재 assign한 task의 position
-        max_T = 100
+        max_T = inf
+
+        if itr >= N: #* scheduling 횟수가 task의 수를 넘는 경우는 생기지 않음.
+            return None, None, None
+
         #* 논문에서의 sample(n) 구현
         for _ in range(n_sample): #* n번 assign을 실행하고 trajectory를 구해서, max trjectory 길이가 가장 작은 task assign을 고르는 것.
-            if itr > 0:
-                random.shuffle(remaining_ag_idx)
-                ag_order = np.array(continuing_ag_idx + remaining_ag_idx)
-
             curr_tasks_pos = [[] for _ in range(M)]  # in order of init agent idx
 
-            joint_action = agent(g, ag_order, continuing_ag, joint_action_prev, train=train)
+            joint_action = agent(g, ag_order, continuing_ag, joint_action_prev, train=train) #* ag_order 순. 그래서 curr_tasks_로 고쳐줌.
             #* 결국 agent를 통해서 나오는 output은 각 agent가 선택한 task list. agent를 index로 해서 value가 task index.
             #* 그리고 ag_order로 append되어서 나옴.
             curr_tasks_idx = [0] * M
@@ -69,6 +70,8 @@ def run_episode(agent, M, N, exp_name, T_threshold, train=True, scenario_dir=Non
 
             """ 2.pass created agent-task pairs to low level solver """
             #* 현재 task assign대로 eecbs를 위한 .scen파일 작성. #*위에서 정한 task대로 low level solver실행.
+            #! agent_pos는 agent 순서로 되어있고 curr_tasks_pos는 agent order의 순서로 되어있는데 scenario를 이렇게 짜는게 맞나?
+            #! => 아니네 curr_tasks_pos도 ag_idx로 넣어주니까 agent 순서가 맞네.
             save_scenario(agent_pos, curr_tasks_pos, exp_name, grid.shape[0], grid.shape[1])
 
             # Run solver #* low level solver 작동 step 수 및, path반환.
@@ -85,35 +88,56 @@ def run_episode(agent, M, N, exp_name, T_threshold, train=True, scenario_dir=Non
             subprocess.run(c, capture_output=True)
             
             # Read solver output
-            agent_traj = read_trajectory(solver_path + exp_name + "_paths.txt") #* agent pos to task pos까지의 traj
-            T = np.array([len(t) for t in agent_traj]) #각 agent 별 trajectory length
+            agent_traj = read_trajectory(solver_path + exp_name + "_paths.txt") #* agent pos to task pos까지의 traj #* ag_idx 순.
+            T = np.array([len(t) for t in agent_traj]) #각 agent 별 trajectory length #* ag_idx순.
             #* sampling을 여러번 해서 best trajectory 얻음.
             if max_T > max(T): #* 가장 늦게 끝나는 task가 가장 작은 것을 best라고 함. 그치 작은 시간 내에 많이 끝나는 것이니까.
-                #! ValueError: max() arg is an empty sequence
-                best_T = T
-                best_curr_tasks_pos = curr_tasks_pos
-                best_agent_traj = agent_traj
-                best_curr_tasks_idx = curr_tasks_idx # agent idx에는 agent가 선택한 task idx있음.
+                #! ValueError: max() arg is an empty sequence why?
+                best_T = T #* ag_idx순
+                best_curr_tasks_pos = curr_tasks_pos #* ag_idx순
+                best_agent_traj = agent_traj #* ag_idx순
+                best_curr_tasks_idx = curr_tasks_idx # agent idx에는 agent가 선택한 task idx있음. #* ag_idx순
                 max_T = max(T)
 
+        # if len(best_T[best_T > 1]) == 0: #* T가 없는 경우가 나와서 처리.
+        #     return None, None, None
+        
         # Mark finished agent, finished task
         next_t = best_T[best_T > 1].min() #* 각 agent의 step 수 중 1 초과인 것만 남기고 그중 min. 아 trajectory가 시작 노드부터 있어서 무조건 1임. 그래서 다음 step에 끝나는 것은 길이가 2
+        episode_timestep += next_t - 1
+
         #* 아래 array는 다음 끝나는 agent flag.
-        finished_ag = (best_T == next_t)
+        finished_ag = (best_T == next_t) #* ag_idx순
         finished_task_idx = np.array(best_curr_tasks_idx)[finished_ag] #* 다음 끝나는 task idx
         task_finished_aft = deepcopy(task_finished_bef)
         task_finished_aft[finished_task_idx] = True #* 끝나는 task표시.
-        episode_timestep += next_t - 1 #*원래 기본 trajectory가 1이니까 -1step 후에 끝나는 것.
+
+        reschedule_ag = [] #* next_t 이전 다른 agent가 task를 밟아서 완료되는 경우 처리.
+        if next_t > 2: #* trajectory one step 이상 가서 끝나는 경우.
+            agent_positions_until_next_t = []
+            for ag_idx, traj in enumerate(best_agent_traj):
+                if best_T[ag_idx] >= 2: 
+                    agent_positions_until_next_t.extend(traj[1:next_t-1])
+            
+            unfinished_task_idx = np.where(~task_finished_aft)[0] 
+            agent_positions_set = set(map(tuple, agent_positions_until_next_t))
+            
+            for task_idx in unfinished_task_idx:
+                if tuple(total_tasks[task_idx]) in agent_positions_set:
+                    # 해당 task를 완료 상태로 표시
+                    task_finished_aft[task_idx] = True
+                    for ag_idx, task in enumerate(best_curr_tasks_idx):
+                        if task == task_idx:
+                            reschedule_ag.append(ag_idx)
+
         # overwrite output
-        agent_pos_new = deepcopy(agent_pos) #* 현재 agent position.
+        agent_pos_new = deepcopy(agent_pos) #* 현재 agent position. #* ag_idx 순.
         for ag_idx in ag_order:
             if best_T[ag_idx] > 1: #* 이번에 움직이는 agent에 대해 update
                 agent_pos_new[ag_idx] = best_agent_traj[ag_idx][next_t - 1] #* 가장빨리 끝나는 다음 step에 각 agent의 위치.
 
-        # Replay memory 에 transition 저장. Agent position 을 graph 의 node 형태로
         terminated = all(task_finished_aft) #* 모든 task가 finished인지 check.
 
-        # TODO: training detail
         if train: #* score를 prob삼아서 sampling을 통해 action을 정한 경우. replay_mem에 저장. training에서는 tr
             # agent.push(g, best_curr_tasks_idx, ag_order, deepcopy(task_finished_bef), next_t, terminated)
             episode_traj.append([g, best_curr_tasks_idx, next_t])
@@ -130,6 +154,10 @@ def run_episode(agent, M, N, exp_name, T_threshold, train=True, scenario_dir=Non
 
         # agent with small T maintains previous action
         continuing_ag = (0 < best_T - next_t) * (best_T - next_t < T_threshold) 
+    
+        if len(reschedule_ag) > 0: #* 중간에 밟힌 task를 가진 것. rescheduling.
+            continuing_ag[reschedule_ag] = False 
+    
         #* 가장 빠른 다음 task종료 후에도 trajectory움직여야 하는 것 중, threshold step보다는 적게 남은 것은 계속 수행. 아닌 것은 rescheduling.
         continuing_ag_idx = continuing_ag.nonzero()[0].tolist() #* 계속 움직이는 것 list로 만듬.
         remaining_ag = list(set(range(M)) - set(continuing_ag_idx)) #* rescheduling 해줘야 하는 agent index.
@@ -137,9 +165,7 @@ def run_episode(agent, M, N, exp_name, T_threshold, train=True, scenario_dir=Non
         #* agent order는 random으로 해줌.
         random.shuffle(remaining_ag)
         remaining_ag_idx = remaining_ag
-        if type(remaining_ag_idx) == int:
-            remaining_ag_idx = [remaining_ag_idx]
-            
+
         # ========================
         ag_order = np.array(continuing_ag_idx + remaining_ag_idx) #* reschedule해야하는 것을 현재 진행중인 것 뒤에 붙임. => 이렇게 해야 continuing은 같은 task 부여받음.
         assert len(set(ag_order)) == M
@@ -154,45 +180,44 @@ def run_episode(agent, M, N, exp_name, T_threshold, train=True, scenario_dir=Non
 
 
 def main(args, exp_name):
-    agent = Agent() #TODO 내부 고쳐야함.
+    agent = Agent()
     for _ in range(args.epoch):
         result = {'train_cost':[], 'train_loss':[], "train_n_assign":[], "eval_cost":[], "eval_n_assign":[]}
-        #training
-        # for i in tqdm(range(args.n_map_train)):
-        #     scenario_dir = '323220_1_{}_{}/scenario_{}.pkl'.format(args.n_agent, args.n_task, i + 1)
-        #     #TODO 내부 고쳐야함.
-        #     cost, n_assign = run_episode(agent, args.n_agent, args.n_task, exp_name, args.task_threshold, train=True, scenario_dir=scenario_dir, VISUALIZE=args.train_visualize) 
-        #     if cost is not None:
-        #         loss = agent.learn()
-        #         result["train_cost"].append(cost)
-        #         result["train_n_assign"].append(n_assign)
-        #         result["train_loss"].append(loss)
 
         for _ in range(args.batch_size):
             for i in range(args.n_map_train):
                 scenario_dir = '323220_1_{}_{}/scenario_{}.pkl'.format(args.n_agent, args.n_task, i + 1)
                 cost, n_assign, episode_traj = run_episode(agent, args.n_agent, args.n_task, exp_name, args.task_threshold, train=True, scenario_dir=scenario_dir, VISUALIZE=args.train_visualize) 
-                agent.push(episode_traj)
-                result["train_cost"].append(cost)
-                result["train_n_assign"].append(n_assign)
-                
-        loss = agent.learn()
-        result["train_loss"].append(loss)
-
-
-        for i in tqdm(range(args.n_map_eval)):
-            scenario_dir = '323220_1_{}_{}/scenario_{}.pkl'.format(args.n_agent, args.n_task, i + 1)
-            cost, n_assign, _ = run_episode(agent, args.n_agent, args.n_task, exp_name, args.task_threshold, train=False, scenario_dir=scenario_dir, VISUALIZE=args.eval_visualize)
-            if cost is not None:
-                result["eval_cost"].append(cost)
-                result["eval_n_assign"].append(n_assign)
+                if cost is not None:
+                    agent.push(episode_traj)
+                    result["train_cost"].append(cost)
+                    result["train_n_assign"].append(n_assign)
         
-        if args.wandb:
-            wandb.log({'train_loss_mean': np.mean(result["train_loss"]), # episodes 진행한 것에 대한 loss.
-                'train_cost_mean': np.mean(result["train_cost"]), # episodes 진행한 것에 대한 tot_cost. makespan
-                'eval_cost_mean': np.mean(result["eval_cost"]),
-                'train_n_assign_mean': np.mean(result["eval_n_assign"]), # 얼마나 scheduling이 일어났는지 terminate까지.
-                'eval_n_assign_mean': np.mean(result["eval_n_assign"])})
+        if agent.buffer.size > 0:
+            loss = agent.learn()
+            result["train_loss"].append(loss)
+
+            for i in tqdm(range(args.n_map_eval)):
+                scenario_dir = '323220_1_{}_{}/scenario_{}.pkl'.format(args.n_agent, args.n_task, i + 1)
+                eval_cost, eval_n_assign, _ = run_episode(agent, args.n_agent, args.n_task, exp_name, args.task_threshold, train=False, scenario_dir=scenario_dir, VISUALIZE=args.eval_visualize)
+                if eval_cost is not None:
+                    result["eval_cost"].append(eval_cost)
+                    result["eval_n_assign"].append(eval_n_assign)
+
+            train_loss_mean = np.mean(result["train_loss"]) if result["train_loss"] else None
+            train_cost_mean = np.mean(result["train_cost"]) if result["train_cost"] else None
+            eval_cost_mean = np.mean(result["eval_cost"]) if result["eval_cost"] else None
+            train_n_assign_mean = np.mean(result["train_n_assign"]) if result["train_n_assign"] else None
+            eval_n_assign_mean = np.mean(result["eval_n_assign"]) if result["eval_n_assign"] else None
+
+            if args.wandb:
+                wandb.log({
+                    'train_loss_mean': train_loss_mean if train_loss_mean is not None else "EMPTY_LIST",
+                    'train_cost_mean': train_cost_mean if train_cost_mean is not None else "EMPTY_LIST",
+                    'eval_cost_mean': eval_cost_mean if eval_cost_mean is not None else "EMPTY_LIST",
+                    'train_n_assign_mean': train_n_assign_mean if train_n_assign_mean is not None else "EMPTY_LIST",
+                    'eval_n_assign_mean': eval_n_assign_mean if eval_n_assign_mean is not None else "EMPTY_LIST"
+                })
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -205,17 +230,18 @@ if __name__ == '__main__':
     parser.add_argument('--n_task', type = int, default= 20, help= "num of tasks")
     parser.add_argument('--task_threshold', type = int, default= 10, help = "task rescheduling threshold")
     parser.add_argument('--wandb', type = bool, default=True)
-    parser.add_argument('--eval_visualize', type = bool, default=False)
+    parser.add_argument('--eval_visualize', type = bool, default=True)
     parser.add_argument('--train_visualize', type = bool, default=False)
     parser.add_argument('--lr', type = float, default=1e-5)
     parser.add_argument('--batch_size', type = int, default = 1)
     args = parser.parse_args()
 
-    exp_name = datetime.now().strftime("%Y%m%d_%H%M")
+    exp_name = datetime.now().strftime("%Y%m%d_%H%M%S")
     if args.wandb:
-        wandb.init(project = 'GFN_MAPF', group = f"a: {args.n_agent}, t: {args.n_task}",name=exp_name, config = vars(args))
+        wandb.init(project = 'GFN_MAPF', group = f"a: {args.n_agent}, t: {args.n_task}",name=f"{exp_name}_batch{args.batch_size}", config = vars(args))
 
     fix_seed(args.seed)
     main(args, exp_name)
 
-#python main.py --wandb True --n_map_train 10 --lr 0.00005
+#  python main.py --wandb True --n_map_train 10 --lr 0.00005
+#  python main.py --wandb True --batch_size 32

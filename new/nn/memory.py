@@ -41,7 +41,6 @@ class RolloutBuffer:
     
     def sample(self):
         out = self.buffer
-        # out = list(map(list, zip(*out)))
         return out
 
     @property # @property decorator를 붙이면 buffer.size 로 buffer.size()를 이용할 수 있다.
