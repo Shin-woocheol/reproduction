@@ -33,7 +33,7 @@ class Agent(nn.Module):
         g = g.to(self.device)
         n_ag = len(ag_order)
         policy = self.get_policy(g) #* 각 agent는 각 task에 대한 score를 가지고 있음.
-        print(f"policy : {policy}\n shape : {policy.shape}") #torch.Size([20, 51]
+        # print(f"policy : {policy}\n shape : {policy.shape}") #torch.Size([20, 51]
         policy_temp = policy.clone().reshape(n_ag, -1)
         out_action = []
         for itr in range(n_ag):

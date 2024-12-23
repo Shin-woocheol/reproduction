@@ -176,8 +176,14 @@ def run_episode(agent, M, N, exp_name, T_threshold, train=True, scenario_dir=Non
 def main(args, exp_name):
     device = torch.device(f"cuda:0" if torch.cuda.is_available() and args.gpu else "cpu")
     agent = Agent(gpu = args.gpu).to(device)
-    for _ in range(args.epoch):
-        result = {'train_cost':[], 'train_loss':[], "train_n_assign":[], "eval_cost":[], "eval_n_assign":[]}
+
+    save_base_dir = os.path.join("saved_models", exp_name)
+    os.makedirs(save_base_dir, exist_ok=True)
+
+    num_eval_map = [1, 3, 5, 7, 10] 
+    for e in tqdm(range(args.epoch), leave=False):
+        result = {'train_cost':[], 'train_loss':[]}
+        eval_result = {num : [] for num in num_eval_map}
 
         for _ in range(args.batch_size):
             for i in range(args.n_map_train):
@@ -186,33 +192,37 @@ def main(args, exp_name):
                 if cost is not None:
                     agent.push(episode_traj)
                     result["train_cost"].append(cost)
-                    result["train_n_assign"].append(n_assign)
         
         if agent.buffer.size > 0:
             loss = agent.learn()
             result["train_loss"].append(loss)
 
-            for i in tqdm(range(args.n_map_eval)):
+            for i in range(args.n_map_eval):
                 scenario_dir = '323220_1_{}_{}/scenario_{}.pkl'.format(args.n_agent, args.n_task, i + 1)
-                eval_cost, eval_n_assign, _ = run_episode(agent, args.n_agent, args.n_task, exp_name, args.task_threshold, train=False, scenario_dir=scenario_dir, VISUALIZE=args.eval_visualize)
+                eval_cost, eval_n_assign, _ = run_episode(agent, args.n_agent, args.n_task, exp_name, args.task_threshold, train=False, scenario_dir=scenario_dir, VISUALIZE=args.eval_visualize, n_sample=args.n_task_sample) #* testing시에 sample 여러개 만듬.
                 if eval_cost is not None:
-                    result["eval_cost"].append(eval_cost)
-                    result["eval_n_assign"].append(eval_n_assign)
+                    for num in num_eval_map:
+                        if i < num:
+                            eval_result[num].append(eval_cost)
+
+            if (e + 1) % 50 == 0:
+                model_save_path = os.path.join(save_base_dir, f"agent_epoch_{e + 1}.pth")
+                torch.save(agent.state_dict(), model_save_path)
 
             train_loss_mean = np.mean(result["train_loss"]) if result["train_loss"] else None
             train_cost_mean = np.mean(result["train_cost"]) if result["train_cost"] else None
-            eval_cost_mean = np.mean(result["eval_cost"]) if result["eval_cost"] else None
-            train_n_assign_mean = np.mean(result["train_n_assign"]) if result["train_n_assign"] else None
-            eval_n_assign_mean = np.mean(result["eval_n_assign"]) if result["eval_n_assign"] else None
 
+            subset_means = {num: (np.mean(eval_result[num]) if eval_result[num] else None) for num in num_eval_map}
             if args.wandb:
-                wandb.log({
+                wandb_log = {
                     'train_loss_mean': train_loss_mean if train_loss_mean is not None else "EMPTY_LIST",
-                    'train_cost_mean': train_cost_mean if train_cost_mean is not None else "EMPTY_LIST",
-                    'eval_cost_mean': eval_cost_mean if eval_cost_mean is not None else "EMPTY_LIST",
-                    'train_n_assign_mean': train_n_assign_mean if train_n_assign_mean is not None else "EMPTY_LIST",
-                    'eval_n_assign_mean': eval_n_assign_mean if eval_n_assign_mean is not None else "EMPTY_LIST"
-                })
+                    'train_cost_mean': train_cost_mean if train_cost_mean is not None else "EMPTY_LIST"
+                }
+                # Add subset means to wandb log
+                for num, mean in subset_means.items():
+                    wandb_log[f'eval_cost_mean_{num}_maps'] = mean if mean is not None else "EMPTY_LIST"
+
+                wandb.log(wandb_log)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -241,4 +251,4 @@ if __name__ == '__main__':
 
 # export CUDA_VISIBLE_DEVICES=1
 #  python main.py --wandb --n_map_train 10 --lr 0.00005
-#  python main.py --wandb --gpu --batch_size 3 
+#  python main.py --wandb --gpu --batch_size 32 --n_map_eval 10 --n_task_sample 50

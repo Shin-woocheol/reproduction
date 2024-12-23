@@ -131,7 +131,7 @@ class Bipartite(nn.Module): #* GNN을 통해서 agent node embedding을 얻고 �
 
     def reduce(self, nodes):
         score = nodes.mailbox['score']
-        print(f"reduced score : {score}")
+        # print(f"reduced score : {score}")
         policy = torch.softmax(score, 1).squeeze() #* 각 task에 대한 score를 softmax. 이게 각 agent가 각 task를 정할 확률인듯.
         return {'policy': policy}
 
