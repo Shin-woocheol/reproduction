@@ -18,7 +18,6 @@ from utils.utils import fix_seed
 from tqdm import tqdm
 from math import inf
 
-RANDOM = True
 solver_path = "EECBS/"
 dec_solver_path = "DecAstar/"
 
@@ -46,7 +45,7 @@ def run_episode(agent, M, N, exp_name, T_threshold, train=True, scenario_dir=Non
         max_T = inf
 
         if itr >= N: #* scheduling 횟수가 task의 수를 넘는 경우는 생기지 않음.
-            return None, None, None
+            return None, None
 
         #* 논문에서의 sample(n) 구현
         for _ in range(n_sample): #* n번 assign을 실행하고 trajectory를 구해서, max trjectory 길이가 가장 작은 task assign을 고르는 것.
@@ -94,7 +93,7 @@ def run_episode(agent, M, N, exp_name, T_threshold, train=True, scenario_dir=Non
                 max_T = max(T)
 
         if len(best_T[best_T > 1]) == 0: #* T가 없는 경우가 나와서 처리.
-            return None, None, None
+            return None, None
         
         # Mark finished agent, finished task
         next_t = best_T[best_T > 1].min() #* 각 agent의 step 수 중 1 초과인 것만 남기고 그중 min. 아 trajectory가 시작 노드부터 있어서 무조건 1임. 그래서 다음 step에 끝나는 것은 길이가 2
@@ -133,18 +132,16 @@ def run_episode(agent, M, N, exp_name, T_threshold, train=True, scenario_dir=Non
         terminated = all(task_finished_aft) #* 모든 task가 finished인지 check.
 
         if train: #* score를 prob삼아서 sampling을 통해 action을 정한 경우. replay_mem에 저장. training에서는 tr
-            # agent.push(g, best_curr_tasks_idx, ag_order, deepcopy(task_finished_bef), next_t, terminated)
             episode_traj.append([g, best_curr_tasks_idx, next_t])
         #* bipartite graph, 현재 agent별 assigned task, 아마 priority, 이전 task_finished정보, 바로 다음 task끝나는 step, 종료 정보 를 buffer에 담음.
         if VISUALIZE:
-            # visualize
             vis_ta(graph, agent_pos, best_curr_tasks_pos, str(itr) + "_assigned", total_tasks=total_tasks,
                    task_finished=task_finished_bef)
             vis_ta(graph, agent_pos_new, best_curr_tasks_pos, str(itr) + "_finished", total_tasks=total_tasks,
                    task_finished=task_finished_aft)
 
         if terminated: #* 모든 task finished
-            return episode_timestep, itr, episode_traj
+            return episode_timestep, episode_traj
 
         # agent with small T maintains previous action
         continuing_ag = (0 < best_T - next_t) * (best_T - next_t < T_threshold) 
@@ -183,12 +180,12 @@ def main(args, exp_name):
     num_eval_map = [1, 3, 5, 7, 10] 
     for e in tqdm(range(args.epoch), leave=False):
         result = {'train_cost':[], 'train_loss':[]}
-        eval_result = {num : [] for num in num_eval_map}
-
+        
+        #* training loop
         for _ in range(args.batch_size):
             for i in range(args.n_map_train):
                 scenario_dir = '323220_1_{}_{}/scenario_{}.pkl'.format(args.n_agent, args.n_task, i + 1)
-                cost, n_assign, episode_traj = run_episode(agent, args.n_agent, args.n_task, exp_name, args.task_threshold, train=True, scenario_dir=scenario_dir, VISUALIZE=args.train_visualize) 
+                cost, episode_traj = run_episode(agent, args.n_agent, args.n_task, exp_name, args.task_threshold, train=True, scenario_dir=scenario_dir, VISUALIZE=args.train_visualize) 
                 if cost is not None:
                     agent.push(episode_traj)
                     result["train_cost"].append(cost)
@@ -197,40 +194,43 @@ def main(args, exp_name):
             loss = agent.learn()
             result["train_loss"].append(loss)
 
+        train_loss_mean = np.mean(result["train_loss"]) if result["train_loss"] else None
+        train_cost_mean = np.mean(result["train_cost"]) if result["train_cost"] else None
+
+        if args.wandb:
+            wandb_log = {
+                'train_loss_mean': train_loss_mean if train_loss_mean is not None else "EMPTY_LIST",
+                'train_cost_mean': train_cost_mean if train_cost_mean is not None else "EMPTY_LIST"
+            }
+            wandb.log(wandb_log)
+
+        #* evaluation
+        if (e + 1) % 50 == 0:
+            eval_result = {num : [] for num in num_eval_map}
+
             for i in range(args.n_map_eval):
                 scenario_dir = '323220_1_{}_{}/scenario_{}.pkl'.format(args.n_agent, args.n_task, i + 1)
-                eval_cost, eval_n_assign, _ = run_episode(agent, args.n_agent, args.n_task, exp_name, args.task_threshold, train=False, scenario_dir=scenario_dir, VISUALIZE=args.eval_visualize, n_sample=args.n_task_sample) #* testing시에 sample 여러개 만듬.
+                eval_cost, _ = run_episode(agent, args.n_agent, args.n_task, exp_name, args.task_threshold, train=False, scenario_dir=scenario_dir, VISUALIZE=args.eval_visualize, n_sample=args.n_task_sample) #* testing시에 sample 여러개 만듬.
                 if eval_cost is not None:
                     for num in num_eval_map:
                         if i < num:
                             eval_result[num].append(eval_cost)
 
-            if (e + 1) % 50 == 0:
-                model_save_path = os.path.join(save_base_dir, f"agent_epoch_{e + 1}.pth")
-                torch.save(agent.state_dict(), model_save_path)
-
-            train_loss_mean = np.mean(result["train_loss"]) if result["train_loss"] else None
-            train_cost_mean = np.mean(result["train_cost"]) if result["train_cost"] else None
+            model_save_path = os.path.join(save_base_dir, f"agent_epoch_{e + 1}.pth")
+            torch.save(agent.state_dict(), model_save_path)
 
             subset_means = {num: (np.mean(eval_result[num]) if eval_result[num] else None) for num in num_eval_map}
             if args.wandb:
-                wandb_log = {
-                    'train_loss_mean': train_loss_mean if train_loss_mean is not None else "EMPTY_LIST",
-                    'train_cost_mean': train_cost_mean if train_cost_mean is not None else "EMPTY_LIST"
-                }
-                # Add subset means to wandb log
-                for num, mean in subset_means.items():
-                    wandb_log[f'eval_cost_mean_{num}_maps'] = mean if mean is not None else "EMPTY_LIST"
-
-                wandb.log(wandb_log)
+                eval_wandb_log = {f'eval_cost_mean_{num}_maps': mean if mean is not None else "EMPTY_LIST" for num, mean in subset_means.items()}
+                wandb.log(eval_wandb_log)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--epoch', type = int, default = 1000)
     parser.add_argument('--seed', type = int, default = 1)
-    parser.add_argument('--n_map_train', type = int, default= 1, help= "num of map in training")
-    parser.add_argument('--n_map_eval', type = int, default= 1, help= "num of map in eval")
-    parser.add_argument('--n_task_sample', type = int, default= 1, help= "num of task assignment sample")
+    parser.add_argument('--n_map_train', type = int, default= 1, help= "num of map for training")
+    parser.add_argument('--n_map_eval', type = int, default= 10, help= "num of map for eval")
+    parser.add_argument('--n_task_sample', type = int, default= 1, help= "num of task assignment sample. 'Samples' in papaer experiments")
     parser.add_argument('--n_agent', type = int, default= 10, help= "num of agents")
     parser.add_argument('--n_task', type = int, default= 20, help= "num of tasks")
     parser.add_argument('--task_threshold', type = int, default= 10, help = "task rescheduling threshold")
@@ -238,7 +238,7 @@ if __name__ == '__main__':
     parser.add_argument('--eval_visualize', action='store_true', help="Enable eval visualize")
     parser.add_argument('--train_visualize', action='store_true', help="Enable train visualize")
     parser.add_argument('--lr', type = float, default=1e-5)
-    parser.add_argument('--batch_size', type = int, default = 1)
+    parser.add_argument('--batch_size', type = int, default = 1, help="num of trajectory used in loss")
     parser.add_argument('--gpu', action='store_true', help="Enable GPU usage")
     args = parser.parse_args()
 
@@ -249,6 +249,6 @@ if __name__ == '__main__':
     fix_seed(args.seed)
     main(args, exp_name)
 
-# export CUDA_VISIBLE_DEVICES=1
+#  export CUDA_VISIBLE_DEVICES=1
 #  python main.py --wandb --n_map_train 10 --lr 0.00005
-#  python main.py --wandb --gpu --batch_size 32 --n_map_eval 10 --n_task_sample 50
+#  python main.py --wandb --gpu --eval_visualize --batch_size 8 --n_map_eval 10 --n_task_sample 50

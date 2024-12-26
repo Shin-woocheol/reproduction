@@ -98,9 +98,10 @@ class Agent(nn.Module):
             pol_sum = torch.mean(valid_policy_log) #* valid action의 수가 다르니까 mean을 하는게 맞는 것 같음.
             cost = torch.sum(next_t)
 
-            loss = - cost * pol_sum
+            # loss = cost * pol_sum
             #* option 2
-            # loss = -(1/cost * pol_sum)
+            loss = -(1/cost * pol_sum)
+
             total_loss += loss
 
         total_loss /= len(batch_traj)
