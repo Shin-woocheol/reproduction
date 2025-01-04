@@ -22,13 +22,14 @@ vis_dist(graph, agent_pos, total_tasks) #* fig folder에 scenario 그림 존재.
 
 """
 1st step: Hungarian Assignment
+#* hungarian algorithm으로 초기 assign. 
 """
 h_time = time.time()
-task_idx, tasks = hungarian(graph, agent_pos, total_tasks) #* hungarian algorithm으로 초기 assign. 
+task_idx, tasks = hungarian(graph, agent_pos, total_tasks) 
 #* task assign dictionary와 h_tasks는 dict인데 안에 좌표 담고있음.
 '''
 task_idx : {0: [34, 1, 45], 1: [43, 5], ...
-h_tasks : {0: [{34: [[2, 3]]}, {1: [[1, 7]]}, {45: [[4, 25]]}], 1: [{43: [[12, 4]]}, {5: [[12, 3]]}], ...
+h_tasks(tasks) : {0: [{34: [[2, 3]]}, {1: [[1, 7]]}, {45: [[4, 25]]}], 1: [{43: [[12, 4]]}, {5: [[12, 3]]}], ...
 '''
 h_time = time.time() - h_time
 soc, ms = cost(agent_pos, tasks, graph) #* 여기서 받은 cost는 주변 agent와 연관 없이 A*로만 받은 것.
@@ -48,15 +49,19 @@ itr = 0
 while True:
     lns_time = time.time()
     # Destroy
+    #* shaw removal. relatedness를 기반으로 random으로 정해진 remove task와 가장 관련된 task N개를 추가로 삭제.
     removal_idx = removal(task_idx, total_tasks, graph, N=2)
-    for i, t in enumerate(tasks.values()):
+
+    #* tasks에서 removal tasks 제거.
+    for i, t in enumerate(tasks.values()): 
         for r in removal_idx:
             if {r: total_tasks[r]} in t:
                 tasks[i].remove({r: total_tasks[r]})
                 
     # Reconstruct
+    #* regret based re-insertion
     while len(removal_idx) != 0:
-        f = f_ijk(tasks, agent_pos, removal_idx, total_tasks, graph)
+        f = f_ijk(tasks, agent_pos, removal_idx, total_tasks, graph) #* estimated total service time when inserting task at the jth position of task sequence of agent k
         regret = get_regret(f)
         regret = dict(sorted(regret.items(), key=lambda x: x[1][0], reverse=True))
         re_ins = list(regret.keys())[0]
@@ -72,6 +77,12 @@ while True:
     itr += 1
     soc, ms = cost(agent_pos, tasks, graph)
     print('{}_Solution || SOC: {:.4f} / MAKESPAN: {:.4f} / TIMECOST: {:.4f}'.format(itr, soc, ms, lns_time))
-    vis_ta(graph, agent_pos, tasks, itr)
+    if itr % 10 == 0:
+        vis_ta(graph, agent_pos, tasks, itr)
 
 # TODO [1] removal parameter N test / [2] time consuming regret search
+#* LNS를 사용해서 얻은 task assign을 EECBS로 어떻게든 넘겨주고 EECBS로 path찾아서 cost만 반환받으면 될듯.
+#* soc가 아니라, makespan을 줄이도록 할 수 있는 방법은??
+#* 해당 알고리즘이 다시 돌아가는 즉, task assign이 다시 일어나는 시점은, 어떤 agent가 처음으로 종료되는 시점.
+#* 해당 시점으로 agent의 position update.
+#* 그럼 다시 task assign후에 다시 EECBSfmf ehfflsms qkdtlr.

@@ -5,7 +5,14 @@ import numpy as np
 from utils.astar import graph_astar
 
 
-def removal(tasks_idx, tasks, graph, N=2):
+def removal(tasks_idx, tasks, graph, N=2): 
+    '''
+    random으로 remove할 task를 선택.
+    그리고 해당 task와의 relatedness를 기준으로 내림차순해서
+    N개 더 remove.
+
+    return : remove되는 task의 idx
+    '''
     t_idx = list()
     for v in tasks_idx.values():
         if type(v) == np.int64:
@@ -29,3 +36,8 @@ def relatedness(graph, ti, tj, w1=9, w2=3):
     _, d_si_sj = graph_astar(graph, ti[0], tj[0])
     _, d_gi_gj = graph_astar(graph, ti[-1], tj[-1])
     return w1 * (d_si_sj + d_gi_gj) + w2 * (len(ti) + len(tj))
+
+#* 현재 문제 상황에서는 start와 goal이 같은 상황. pickup and delivery가 아님.
+def relatedness(graph, ti, tj, w1=9, w2=3):
+    _, d_si_sj = graph_astar(graph, ti[0], tj[0])
+    return w1 * (d_si_sj) + w2 * (len(ti) + len(tj))
