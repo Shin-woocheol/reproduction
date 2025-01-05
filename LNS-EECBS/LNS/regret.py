@@ -17,7 +17,7 @@ def f_ijk(current_tasks, agent_pos, removal_idx, total_tasks, graph):
 
     estimated total service time when inserting task at the jth position of task sequence of agent k
     '''
-    before_cost = list() #* agent idx에 task종료까지의 cost list.
+    before_cost = list() #* agent idx에 task종료까지의 cost list. task 삭제된 후 계산
     for b in current_tasks.keys(): #agent
         b_path = list()
         for _a in current_tasks[b]: #task

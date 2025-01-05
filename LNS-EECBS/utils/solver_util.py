@@ -2,9 +2,11 @@ import subprocess
 import numpy as np
 from utils.astar import graph_astar
 import time
-
+import os
 
 def save_map(grid, filename):
+    if not os.path.exists('DecAstar'):
+        os.makedirs('DecAstar')
     #* EECBS를 위한 map저장.
     f = open('EECBS/{}.map'.format(filename), 'w')
     f.write('type four-directional\n')
@@ -28,16 +30,6 @@ def save_map(grid, filename):
     f.write('height {}\n'.format(grid.shape[0]))
     f.write('width {}\n'.format(grid.shape[1]))
     f.write('map\n')
-
-    # # creating map from grid
-    # map_dict = {0: '.', 1: '@'}
-    # for r in range(grid.shape[0]):
-    #     line = grid[r]
-    #     l = []
-    #     for g in line:
-    #         l.append(map_dict[g])
-    #     f.write(''.join(l) + '\n')
-
     f.close()
 
 
@@ -48,7 +40,6 @@ def save_scenario(agent_pos, total_tasks, scenario_name, row, column):
     #* 나중에 뭐에 쓰기 위해서 적는 것인지는 모르겠음. 근데 EECBS repo에 이렇게 된 파일이 존재함.
     f = open('EECBS/{}.scen'.format(scenario_name), 'w')
     f.write('version 1\n')
-    # print(f"agent_pos : {agent_pos} \n total tasks : {total_tasks}")
     for a, t in zip(agent_pos, total_tasks):
         # print(f"a : {a}, t : {t}\n")
         # t[0] : task pos list 좌표.
@@ -73,6 +64,9 @@ def save_scenario_dec(agent_pos, total_tasks, scenario_name, row=32, column=32):
 
 
 def read_trajectory(path_file_dir):
+    '''
+    trajectory 파일에서, 시작 node 위치 to dest node 위치까지의 trajectory를 반환
+    '''
     f = open(path_file_dir, 'r')
     lines = f.readlines() #각 줄을 list로 lines에 저장.
     agent_traj = []
@@ -98,20 +92,20 @@ def read_trajectory(path_file_dir):
 
 
 def compute_astar(agent_pos, total_tasks, graph):
-    dec_solver_path = "DecAstar/"
-    n_ag = len(agent_pos)
-    n_task = len(total_tasks)
-
+    '''
+    agent_pos : list of agent position
+    total_tasks : list of task position form : [[],[]]
+    graph : grid graph
+    장애물이 있는 grid graph에서 agent to task로의 dist구함.
+    '''
     dists = []
     for task in total_tasks: #* 모든 task부터 모든 agent까지의 거리 astar로 잼.
         temp = []
         for ag in agent_pos:
-            _, dist = graph_astar(graph, ag, task[0])
+            #! task length 1로 고정해서 수정함. task[0]
+            _, dist = graph_astar(graph, ag, task) #task pos 여러개 있을 수 있어서 [[]] 였음.
+            #* agent to task까지의 step 수 나옴.
             temp.append(dist)
         dists.append(temp) #* task에 대해서 모든 agent까지의 거리를 append
 
     return np.array(dists) + 1 #? 왜 모든 거리에 +1을 수행하는거지?
-
-    # process_out_dec = subprocess.run(dec_c, capture_output=True)
-    # text_byte_dec = process_out_dec.stdout.decode('utf-8')
-    # return text_byte_dec
