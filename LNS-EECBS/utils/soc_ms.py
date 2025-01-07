@@ -44,7 +44,6 @@ def eecbs_cost(agent_pos, tasks, total_tasks, exp_name, size):
         for i in range(M):
             if len(tasks[i]) > 0:
                 first_task_dict = tasks[i][0]
-
                 for coords_list in first_task_dict.values():
                     curr_tasks_pos[i] = coords_list 
             else: # 해당 agent에게 할당된 task 전부 수행 완료.
@@ -58,7 +57,7 @@ def eecbs_cost(agent_pos, tasks, total_tasks, exp_name, size):
             "-o", solver_path + exp_name + ".csv",
             "--outputPaths", solver_path + exp_name + "_paths.txt",
             "-k", str(M),
-            "-t", "1",  # 시간 제한(초) - 상황에 맞게 조정
+            "-t", "1",
             "--suboptimality=1.1"
         ]
         subprocess.run(c, capture_output=True)

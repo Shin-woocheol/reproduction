@@ -4,33 +4,29 @@ import numpy as np
 
 from utils.astar import graph_astar
 
+def removal(task_status, tasks, graph, N=2):
+    # incomplete task만 골라줌.
+    incomplete_tasks = [i for i, st in enumerate(task_status) if st == 0]
+    if len(incomplete_tasks) == 0:
+        return []
 
-def removal(tasks_idx, tasks, graph, N=2): 
-    '''
-    random으로 remove할 task를 선택.
-    그리고 해당 task와의 relatedness를 기준으로 내림차순해서
-    N개 더 remove.
+    chosen = random.choice(incomplete_tasks)
+    incomplete_tasks.remove(chosen)
 
-    return : remove되는 task의 idx
-    '''
-    t_idx = list()
-    for v in tasks_idx.values():
-        if type(v) == np.int64:
-            t_idx.append(v)
-        else:
-            t_idx += v
-    t_idx = np.array(t_idx).reshape(-1).tolist()
-    chosen = random.choice(t_idx)
-    t_idx.remove(chosen)
+    if len(incomplete_tasks) <= N: # 추가로 제거해야할 수 보다 작은경우 나머지 다 제거
+        removal_idx = [chosen] + incomplete_tasks
+        return removal_idx
 
-    rs = dict()
-    for r in t_idx:
+    rs = {}
+    for r in incomplete_tasks:
         rs[r] = relatedness(graph, tasks[chosen], tasks[r])
-    sorted_r = dict(sorted(rs.items(), key=lambda x: x[1], reverse=True))
-    removal_idx = [chosen] + [list(sorted_r.keys())[s] for s in range(N)]
+    # rs: { task_id : relatedness_value }
 
+    sorted_r = sorted(rs.keys(), key=lambda x: rs[x], reverse=True)
+    additional = sorted_r[:N]
+
+    removal_idx = [chosen] + additional
     return removal_idx
-
 
 def relatedness(graph, ti, tj, w1=9, w2=3):
     _, d_si_sj = graph_astar(graph, ti[0], tj[0])
@@ -38,6 +34,6 @@ def relatedness(graph, ti, tj, w1=9, w2=3):
     return w1 * (d_si_sj + d_gi_gj) + w2 * (len(ti) + len(tj))
 
 #* 현재 문제 상황에서는 start와 goal이 같은 상황. pickup and delivery가 아님.
-def relatedness(graph, ti, tj, w1=9, w2=3):
-    _, d_si_sj = graph_astar(graph, ti[0], tj[0])
-    return w1 * (d_si_sj) + w2 * (len(ti) + len(tj))
+# def relatedness(graph, ti, tj, w1=9, w2=3):
+#     _, d_si_sj = graph_astar(graph, ti[0], tj[0])
+#     return w1 * (d_si_sj) + w2 * (len(ti) + len(tj))
