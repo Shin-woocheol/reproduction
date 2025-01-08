@@ -1,0 +1,14 @@
+[INIT] EECBS_MAKESPAN: 22, SOC(A*): 118, MS(A*): 22, Hungarian time: 0.2701
+[1_Solution] EECBS_MAKESPAN: 22, SOC(A*): 127, MS(A*): 22, TIMECOST: 0.3049
+Traceback (most recent call last):
+  File "/Users/woocheolshin/shin/reproduction/LNS-EECBS/main.py", line 298, in <module>
+    ms, tasks = main(args, exp_name)
+  File "/Users/woocheolshin/shin/reproduction/LNS-EECBS/main.py", line 208, in main
+    "LNS_iteration": do_lns_count,
+NameError: name 'do_lns_count' is not defined
+Traceback (most recent call last):
+  File "/Users/woocheolshin/shin/reproduction/LNS-EECBS/main.py", line 298, in <module>
+    ms, tasks = main(args, exp_name)
+  File "/Users/woocheolshin/shin/reproduction/LNS-EECBS/main.py", line 208, in main
+    "LNS_iteration": do_lns_count,
+NameError: name 'do_lns_count' is not defined

@@ -1,0 +1,19 @@
+{
+  "os":  "macOS-14.5-arm64-arm-64bit",
+  "python":  "CPython 3.10.16",
+  "startedAt":  "2025-01-07T21:07:34.058750Z",
+  "args":  [
+    "--wandb"
+  ],
+  "program":  "/Users/woocheolshin/shin/reproduction/LNS-EECBS/main.py",
+  "codePath":  "LNS-EECBS/main.py",
+  "git":  {
+    "remote":  "https://github.com/Shin-woocheol/reproduction.git",
+    "commit":  "14a4b66138a8c4b4c0fd91bd5a9cf33b4ff45a8c"
+  },
+  "email":  "woofe@unist.ac.kr",
+  "root":  "/Users/woocheolshin/shin/reproduction/LNS-EECBS",
+  "host":  "Woocheolui-MacBookAir.local",
+  "executable":  "/opt/anaconda3/envs/intern/bin/python",
+  "codePathLocal":  "main.py"
+}

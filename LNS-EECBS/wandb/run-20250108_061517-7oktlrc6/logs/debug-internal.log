@@ -1,0 +1,16 @@
+{"time":"2025-01-08T06:15:17.136035+09:00","level":"INFO","msg":"using version","core version":"0.19.1"}
+{"time":"2025-01-08T06:15:17.136137+09:00","level":"INFO","msg":"created symlink","path":"/Users/woocheolshin/shin/reproduction/LNS-EECBS/wandb/run-20250108_061517-7oktlrc6/logs/debug-core.log"}
+{"time":"2025-01-08T06:15:17.247888+09:00","level":"INFO","msg":"created new stream","id":"7oktlrc6"}
+{"time":"2025-01-08T06:15:17.248139+09:00","level":"INFO","msg":"handler: started","stream_id":"7oktlrc6"}
+{"time":"2025-01-08T06:15:17.248315+09:00","level":"INFO","msg":"stream: started","id":"7oktlrc6"}
+{"time":"2025-01-08T06:15:17.248432+09:00","level":"INFO","msg":"sender: started","stream_id":"7oktlrc6"}
+{"time":"2025-01-08T06:15:17.248472+09:00","level":"INFO","msg":"writer: Do: started","stream_id":"7oktlrc6"}
+{"time":"2025-01-08T06:15:17.610139+09:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-01-08T06:16:40.475345+09:00","level":"INFO","msg":"stream: closing","id":"7oktlrc6"}
+{"time":"2025-01-08T06:16:40.47554+09:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-01-08T06:16:40.476267+09:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-01-08T06:16:41.227736+09:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-01-08T06:16:41.474845+09:00","level":"INFO","msg":"handler: closed","stream_id":"7oktlrc6"}
+{"time":"2025-01-08T06:16:41.47486+09:00","level":"INFO","msg":"sender: closed","stream_id":"7oktlrc6"}
+{"time":"2025-01-08T06:16:41.474849+09:00","level":"INFO","msg":"writer: Close: closed","stream_id":"7oktlrc6"}
+{"time":"2025-01-08T06:16:41.475162+09:00","level":"INFO","msg":"stream: closed","id":"7oktlrc6"}

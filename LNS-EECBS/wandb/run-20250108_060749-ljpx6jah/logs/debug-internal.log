@@ -1,0 +1,16 @@
+{"time":"2025-01-08T06:07:49.993524+09:00","level":"INFO","msg":"using version","core version":"0.19.1"}
+{"time":"2025-01-08T06:07:49.993617+09:00","level":"INFO","msg":"created symlink","path":"/Users/woocheolshin/shin/reproduction/LNS-EECBS/wandb/run-20250108_060749-ljpx6jah/logs/debug-core.log"}
+{"time":"2025-01-08T06:07:50.104838+09:00","level":"INFO","msg":"created new stream","id":"ljpx6jah"}
+{"time":"2025-01-08T06:07:50.105166+09:00","level":"INFO","msg":"stream: started","id":"ljpx6jah"}
+{"time":"2025-01-08T06:07:50.105464+09:00","level":"INFO","msg":"sender: started","stream_id":"ljpx6jah"}
+{"time":"2025-01-08T06:07:50.105477+09:00","level":"INFO","msg":"writer: Do: started","stream_id":"ljpx6jah"}
+{"time":"2025-01-08T06:07:50.105596+09:00","level":"INFO","msg":"handler: started","stream_id":"ljpx6jah"}
+{"time":"2025-01-08T06:07:50.5547+09:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-01-08T06:07:50.67259+09:00","level":"INFO","msg":"stream: closing","id":"ljpx6jah"}
+{"time":"2025-01-08T06:07:50.672963+09:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-01-08T06:07:50.673615+09:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-01-08T06:07:52.077152+09:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-01-08T06:07:52.300877+09:00","level":"INFO","msg":"handler: closed","stream_id":"ljpx6jah"}
+{"time":"2025-01-08T06:07:52.300928+09:00","level":"INFO","msg":"sender: closed","stream_id":"ljpx6jah"}
+{"time":"2025-01-08T06:07:52.300906+09:00","level":"INFO","msg":"writer: Close: closed","stream_id":"ljpx6jah"}
+{"time":"2025-01-08T06:07:52.301301+09:00","level":"INFO","msg":"stream: closed","id":"ljpx6jah"}

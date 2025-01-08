@@ -1,0 +1,33 @@
+_wandb:
+    value:
+        cli_version: 0.19.1
+        m: []
+        python_version: 3.10.16
+        t:
+            "1":
+                - 55
+            "2":
+                - 55
+            "3":
+                - 13
+                - 16
+                - 23
+                - 55
+            "4": 3.10.16
+            "5": 0.19.1
+            "8":
+                - 5
+            "12": 0.19.1
+            "13": darwin-arm64
+max_t:
+    value: 10
+n_agent:
+    value: 10
+n_task:
+    value: 20
+seed:
+    value: 7
+visualize:
+    value: false
+wandb:
+    value: true

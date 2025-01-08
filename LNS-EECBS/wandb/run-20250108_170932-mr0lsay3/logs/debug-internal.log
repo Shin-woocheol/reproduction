@@ -1,0 +1,11 @@
+{"time":"2025-01-08T17:09:32.368386+09:00","level":"INFO","msg":"using version","core version":"0.19.1"}
+{"time":"2025-01-08T17:09:32.368447+09:00","level":"INFO","msg":"created symlink","path":"/Users/woocheolshin/shin/reproduction/LNS-EECBS/wandb/run-20250108_170932-mr0lsay3/logs/debug-core.log"}
+{"time":"2025-01-08T17:09:32.482216+09:00","level":"INFO","msg":"created new stream","id":"mr0lsay3"}
+{"time":"2025-01-08T17:09:32.482566+09:00","level":"INFO","msg":"stream: started","id":"mr0lsay3"}
+{"time":"2025-01-08T17:09:32.482582+09:00","level":"INFO","msg":"handler: started","stream_id":"mr0lsay3"}
+{"time":"2025-01-08T17:09:32.482948+09:00","level":"INFO","msg":"sender: started","stream_id":"mr0lsay3"}
+{"time":"2025-01-08T17:09:32.483037+09:00","level":"INFO","msg":"writer: Do: started","stream_id":"mr0lsay3"}
+{"time":"2025-01-08T17:09:33.254056+09:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-01-08T17:11:07.254637+09:00","level":"INFO","msg":"stream: closing","id":"mr0lsay3"}
+{"time":"2025-01-08T17:11:07.25483+09:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-01-08T17:11:07.255414+09:00","level":"INFO","msg":"Stopped system monitor"}
