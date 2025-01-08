@@ -11,9 +11,9 @@ n_map_eval : num of map for eval
 n_task_sample : num of task assignment sample. 'Samples' in papaer experiments
 
 ## Environment
-python = 3.9
-dgl = 2.4.0
-libboost
+python = 3.9  
+dgl = 2.4.0  
+libboost  
 
 ```bash
 conda env create -f environment.yml
