@@ -1,11 +1,6 @@
 # reproduction
 
-## EECBS setting
-On the EECBS,
-```bash
-cmake -DCMAKE_BUILD_TYPE=RELEASE .
-make
-```
+
 
 ## Running Example
 ```bash
@@ -16,8 +11,19 @@ n_map_eval : num of map for eval
 n_task_sample : num of task assignment sample. 'Samples' in papaer experiments
 
 ## Environment
+python = 3.9
+dgl = 2.4.0
+libboost
+
 ```bash
 conda env create -f environment.yml
+```
+
+## EECBS setting
+On the EECBS,
+```bash
+cmake -DCMAKE_BUILD_TYPE=RELEASE .
+make
 ```
 
 ## Baseline Algorithm
