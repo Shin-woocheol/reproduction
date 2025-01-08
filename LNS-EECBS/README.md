@@ -1,5 +1,5 @@
 # LNS-EECBS
-high-level : LNS
+high-level : LNS  
 low-level : EECBS
 
 ## Running Example

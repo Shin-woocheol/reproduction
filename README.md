@@ -19,3 +19,6 @@ n_task_sample : num of task assignment sample. 'Samples' in papaer experiments
 ```bash
 conda env create -f environment.yml
 ```
+
+## Baseline Algorithm
+LNS-EECBS is in LNS-EECBS folder

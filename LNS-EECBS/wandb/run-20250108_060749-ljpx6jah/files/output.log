@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "/Users/woocheolshin/shin/reproduction/LNS-EECBS/main.py", line 296, in <module>
-    random.seed(seed)
-NameError: name 'seed' is not defined
-Traceback (most recent call last):
-  File "/Users/woocheolshin/shin/reproduction/LNS-EECBS/main.py", line 296, in <module>
-    random.seed(seed)
-NameError: name 'seed' is not defined
