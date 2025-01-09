@@ -4,6 +4,8 @@ import subprocess
 import wandb
 import argparse
 import random
+import os
+import pickle
 
 from LNS.hungarian import hungarian
 from LNS.regret import f_ijk, get_regret
@@ -18,6 +20,13 @@ from datetime import datetime
 from copy import deepcopy
 
 solver_path = "EECBS/"
+
+def save_tasks(tasks, exp_name, seed, max_t):
+    os.makedirs("saved", exist_ok=True)  # Ensure the directory exists
+    file_path = f"saved/{exp_name}_seed{seed}_max_t{max_t}.pkl"
+    with open(file_path, 'wb') as f:
+        pickle.dump(tasks, f)
+    print(f"Tasks saved to {file_path}")
 
 def main(args, exp_name):
     M = args.n_agent
@@ -51,7 +60,6 @@ def main(args, exp_name):
     """
     itr = 0
     do_lns = 1
-    make_span = 0
     task_status = np.zeros(N, dtype=int)  # not complete : 0 , executing : 1, completed : 2
     lns_count = 1
 
@@ -130,8 +138,6 @@ def main(args, exp_name):
         else:
             moving_agents_mask = (T > 1)
             next_t = T[moving_agents_mask].min()
-            
-        make_span += (next_t - 1)
 
         finished_ag = (T == next_t)
         new_agent_pos = deepcopy(agent_pos)
@@ -150,7 +156,8 @@ def main(args, exp_name):
         agent_pos = new_agent_pos
 
         if all(task_status[t] == 2 for t in range(N)):
-            return make_span, tasks
+            save_tasks(tasks, exp_name, args.seed, args.max_t)
+            return tasks
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -167,7 +174,6 @@ if __name__ == '__main__':
 
     random.seed(args.seed)
     np.random.seed(args.seed)
-    ms, tasks = main(args, exp_name)
-    print(f"[Done] Final makespan: {ms}")
+    tasks = main(args, exp_name)
 
-# python main.py --wandb --seed 7777 --max_t 15
+# python main.py --wandb --seed 7777 --max_t 5
