@@ -17,6 +17,7 @@ from utils.vis_graph import vis_ta
 from utils.utils import fix_seed
 from tqdm import tqdm
 from math import inf
+from utils.visualize import visualize
 
 solver_path = "EECBS/"
 dec_solver_path = "DecAstar/"
@@ -37,6 +38,10 @@ def run_episode(agent, M, N, exp_name, T_threshold, train=True, scenario_dir=Non
     shortest_paths = compute_astar(agent_pos, total_tasks, graph) 
     g = convert_to_bipartite(graph, agent_pos, total_tasks, task_finished_bef, shortest_paths)
     
+    # for visulization
+    agent_completed_tasks = {i: [] for i in range(M)}  # 각 agent가 완료한 task 기록
+    agent_paths = {i: [tuple(agent_pos[i])] for i in range(M)}  # 각 agent의 이동 경로
+
     while True:
         best_T = None #* 가장 늦게 끝나는 task까지의 step이 가장 작은 것.
         best_curr_tasks_idx = None #* 현재 assign한 task의 idx
@@ -57,7 +62,6 @@ def run_episode(agent, M, N, exp_name, T_threshold, train=True, scenario_dir=Non
             curr_tasks_idx = [0] * M
 
             for ag_idx, action in zip(ag_order, joint_action):
-                #TODO 제대로 assign되는건지 확인 필요.
                 if action == -1: #* order가 앞인 모든 agent가 task가져갔으면
                     task_loc = agent_pos[ag_idx].tolist()
                 else:
@@ -105,24 +109,25 @@ def run_episode(agent, M, N, exp_name, T_threshold, train=True, scenario_dir=Non
         task_finished_aft = deepcopy(task_finished_bef)
         task_finished_aft[finished_task_idx] = True #* 끝나는 task표시.
 
-        reschedule_ag = [] #* next_t 이전 다른 agent가 task를 밟아서 완료되는 경우 처리.
-        if next_t > 2: #* trajectory one step 이상 가서 끝나는 경우.
-            agent_positions_until_next_t = []
-            for ag_idx, traj in enumerate(best_agent_traj):
-                if best_T[ag_idx] >= 2: 
-                    agent_positions_until_next_t.extend(traj[1:next_t-1])
+        # 중간에 밟힌 task를 가진 agent rescheduling로직.
+        # reschedule_ag = [] #* next_t 이전 다른 agent가 task를 밟아서 완료되는 경우 처리.
+        # if next_t > 2: #* trajectory one step 이상 가서 끝나는 경우.
+        #     agent_positions_until_next_t = []
+        #     for ag_idx, traj in enumerate(best_agent_traj):
+        #         if best_T[ag_idx] >= 2: 
+        #             agent_positions_until_next_t.extend(traj[1:next_t-1])
             
-            unfinished_task_idx = np.where(~task_finished_aft)[0] 
-            agent_positions_set = set(map(tuple, agent_positions_until_next_t))
+        #     unfinished_task_idx = np.where(~task_finished_aft)[0] 
+        #     agent_positions_set = set(map(tuple, agent_positions_until_next_t))
             
-            for task_idx in unfinished_task_idx:
-                if tuple(total_tasks[task_idx]) in agent_positions_set:
-                    # 해당 task를 완료 상태로 표시
-                    task_finished_aft[task_idx] = True
-                    for ag_idx, task in enumerate(best_curr_tasks_idx):
-                        if task == task_idx:
-                            reschedule_ag.append(ag_idx)
-
+        #     for task_idx in unfinished_task_idx:
+        #         if tuple(total_tasks[task_idx]) in agent_positions_set:
+        #             # 해당 task를 완료 상태로 표시
+        #             task_finished_aft[task_idx] = True
+        #             for ag_idx, task in enumerate(best_curr_tasks_idx):
+        #                 if task == task_idx:
+        #                     reschedule_ag.append(ag_idx)
+        ###
         # overwrite output
         agent_pos_new = deepcopy(agent_pos) #* 현재 agent position. #* ag_idx 순.
         for ag_idx in ag_order:
@@ -133,21 +138,37 @@ def run_episode(agent, M, N, exp_name, T_threshold, train=True, scenario_dir=Non
 
         if train: #* score를 prob삼아서 sampling을 통해 action을 정한 경우. replay_mem에 저장. training에서는 tr
             episode_traj.append([g, best_curr_tasks_idx, next_t])
+
         #* bipartite graph, 현재 agent별 assigned task, 아마 priority, 이전 task_finished정보, 바로 다음 task끝나는 step, 종료 정보 를 buffer에 담음.
         if VISUALIZE:
             vis_ta(graph, agent_pos, best_curr_tasks_pos, str(itr) + "_assigned", total_tasks=total_tasks,
                    task_finished=task_finished_bef)
             vis_ta(graph, agent_pos_new, best_curr_tasks_pos, str(itr) + "_finished", total_tasks=total_tasks,
                    task_finished=task_finished_aft)
+            
+            #* agent traj visualize를 위한 저장
+            for ag_idx, task_idx in enumerate(best_curr_tasks_idx):
+                if finished_ag[ag_idx]:  # 해당 agent가 task 완료 시
+                    agent_completed_tasks[ag_idx].append(task_idx)
+            
+            for ag_idx, traj in enumerate(best_agent_traj):
+                agent_paths[ag_idx].extend(traj[:next_t - 1])
 
         if terminated: #* 모든 task finished
+            if VISUALIZE:
+                # visualize(grid.shape, total_tasks, agent_completed_tasks, agent_paths, output_path=f"./{exp_name}.png")
+                visualize(graph, total_tasks, agent_paths, agent_completed_tasks, exp_name)
             return episode_timestep, episode_traj
 
+        #* option 1. threshold 로직
         # agent with small T maintains previous action
         continuing_ag = (0 < best_T - next_t) * (best_T - next_t < T_threshold) 
-    
-        if len(reschedule_ag) > 0: #* 중간에 밟힌 task를 가진 것. rescheduling.
-            continuing_ag[reschedule_ag] = False 
+        #* option 2. threshold 로직 없이 가는 것.
+        # continuing_ag = (0 < best_T - next_t)
+
+        #중간에 밟힌 task를 가진 agent rescheduling로직.
+        # if len(reschedule_ag) > 0: #* 중간에 밟힌 task를 가진 것. rescheduling.
+        #     continuing_ag[reschedule_ag] = False 
     
         #* 가장 빠른 다음 task종료 후에도 trajectory움직여야 하는 것 중, threshold step보다는 적게 남은 것은 계속 수행. 아닌 것은 rescheduling.
         continuing_ag_idx = continuing_ag.nonzero()[0].tolist() #* 계속 움직이는 것 list로 만듬.
@@ -251,4 +272,4 @@ if __name__ == '__main__':
 
 #  export CUDA_VISIBLE_DEVICES=1
 #  python main.py --wandb --n_map_train 10 --lr 0.00005
-#  python main.py --wandb --gpu --eval_visualize --batch_size 8 --n_map_eval 10 --n_task_sample 50
+#  python main.py --wandb --gpu --eval_visualize --batch_size 8 --n_map_eval 10 --n_task_sample 10
