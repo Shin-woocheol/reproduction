@@ -21,6 +21,7 @@ from copy import deepcopy
 
 solver_path = "EECBS/"
 
+# EECBS cost 돌리기 위해서 save해둠. 
 def save_tasks(tasks, exp_name, seed, max_t):
     os.makedirs("saved", exist_ok=True)  # Ensure the directory exists
     file_path = f"saved/{exp_name}_seed{seed}_max_t{max_t}.pkl"
@@ -31,7 +32,9 @@ def save_tasks(tasks, exp_name, seed, max_t):
 def main(args, exp_name):
     M = args.n_agent
     N = args.n_task
-    scenario = load_scenarios(f'323220_1_{M}_{N}_eval/scenario_1.pkl') #* size,size,obs_density,tasklength,agent,task
+    # scenario = load_scenarios(f'323220_1_{M}_{N}/scenario_1.pkl') #* size,size,obs_density,tasklength,agent,task
+    
+    scenario = load_scenarios(f'{args.scenario_path}')
     grid, graph, agent_pos, total_tasks = scenario[0], scenario[1], scenario[2], scenario[3]
     init_agent_pos = deepcopy(agent_pos)
     total_tasks = [[[x, y]] for x, y in total_tasks]
@@ -62,19 +65,23 @@ def main(args, exp_name):
     do_lns = 1
     task_status = np.zeros(N, dtype=int)  # not complete : 0 , executing : 1, completed : 2
     lns_count = 1
+    tot_lns_time = 0
 
     while True:
         max_t = time.time() + args.max_t
         while do_lns:
+            if lns_count >= 2: #LNS를 초기에만 실행하고 싶은 경우.
+                break
             zero_count = np.sum(task_status == 0)
             if zero_count == 0: # 재할당 할 수 있는 task없음.
                 break
             
-            lns_time = time.time()
+            start = time.time()
             tasks = lns_once(tasks, agent_pos, total_tasks, graph, task_status, init_agent_pos, N = 2)
-            lns_time = time.time() - lns_time
+            lns_time = time.time() - start
+            tot_lns_time += lns_time
 
-            if time.time() > max_t:
+            if tot_lns_time > max_t:
                 break
             # if itr > max_itr:
             #     break
@@ -93,7 +100,7 @@ def main(args, exp_name):
                     "LNS_time": lns_time
                 })
 
-            if args.visualize and itr % 100 == 0:
+            if args.visualize and itr % 50 == 0:
                 vis_ta(graph, agent_pos, tasks, itr)
 
         do_lns = 0 # free agent가 생기는 경우에만 lns다시 수행.
@@ -167,13 +174,14 @@ if __name__ == '__main__':
     parser.add_argument('--wandb', action='store_true', help="Enable wandb")
     parser.add_argument('--visualize', action='store_true', help="Enable visualize")
     parser.add_argument('--seed', type = int, default = 1)
+    parser.add_argument('--scenario_path', type = str, default = 'test_scenario_seed7777/scenario_1.pkl')
     args = parser.parse_args()
     exp_name = datetime.now().strftime("%Y%m%d_%H%M%S")
     if args.wandb:
-        wandb.init(project = 'GFN_MAPF', group = f"LNS-EECBS || a: {args.n_agent}, t: {args.n_task}",name=f"{exp_name}_seed{args.seed}_max_t{args.max_t}", config = vars(args))
+        wandb.init(project = 'LNS-EECBS', group = f"LNS-EECBS || a: {args.n_agent}, t: {args.n_task}",name=f"{exp_name}_seed{args.seed}_max_t{args.max_t}", config = vars(args))
 
     random.seed(args.seed)
     np.random.seed(args.seed)
     tasks = main(args, exp_name)
 
-# python main.py --wandb --seed 7777 --max_t 5
+# python main.py --wandb --seed 7777 --max_t 100 --visualize

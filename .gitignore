@@ -1,0 +1,32 @@
+# meta data
+.DS_Store
+
+__pycache__/
+.git/
+.idea/
+.ipynb_checkpoints/
+
+# datasets
+data/
+fig/
+saved/
+
+# MAPF solvers
+EECBS1/
+EECBS/
+EECBS copy/
+exp/
+RHCR/
+DecAstar/
+__pycache__/
+wandb/
+eval_fig/
+saved_models/
+Ahn_result/
+scenarios/
+
+*.ipynb
+*.png
+*.txt
+*.th
+main1.py

@@ -117,7 +117,7 @@ def run_episode(agent, M, N, exp_name, train=True, scenario_dir=None, VISUALIZE=
         terminated = all(task_finished_aft) #* 모든 task가 finished인지 check.
 
         if train: #* score를 prob삼아서 sampling을 통해 action을 정한 경우. replay_mem에 저장. training에서는 tr
-            episode_traj.append([g, best_curr_tasks_idx, next_t])
+            episode_traj.append([g, best_curr_tasks_idx, next_t - 1])
 
         #* bipartite graph, 현재 agent별 assigned task, 아마 priority, 이전 task_finished정보, 바로 다음 task끝나는 step, 종료 정보 를 buffer에 담음.
         if VISUALIZE:
@@ -185,12 +185,13 @@ def main(args, exp_name):
         if args.wandb:
             wandb_log = {
                 'train_loss_mean': train_loss_mean if train_loss_mean is not None else "EMPTY_LIST",
-                'train_cost_mean': train_cost_mean if train_cost_mean is not None else "EMPTY_LIST"
+                'train_cost_mean': train_cost_mean if train_cost_mean is not None else "EMPTY_LIST",
+                'baseline': agent.baseline
             }
             wandb.log(wandb_log)
 
         #* evaluation
-        if (e + 1) % 50 == 0:
+        if (e + 1) % 20 == 0:
             eval_result = {num : [] for num in num_eval_map}
 
             for i in range(args.n_map_eval):
@@ -235,4 +236,5 @@ if __name__ == '__main__':
 
 #  export CUDA_VISIBLE_DEVICES=1
 #  python main.py --wandb --n_map_train 10 --lr 0.00005
-#  python main.py --wandb --gpu --eval_visualize --batch_size 8 --n_map_eval 10 --n_task_sample 10
+#  python main.py --wandb --gpu --eval_visualize --batch_size 4 --n_map_eval 10 --seed 7 --n_task_sample 10
+#  python main.py --wandb --gpu --batch_size 8 --n_map_eval 10 --seed 7 --epoch 100000

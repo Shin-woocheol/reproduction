@@ -70,19 +70,12 @@ def vis_ta(graph, agents, tasks, itr, total_tasks=None, task_finished=None):
             else:
                 task_color_dict[tuple(t[0])] = gray
 
-        # nx.draw(graph, pos=pos, nodelist=task_nodes, node_size=100, node_shape='X', node_color='gray')
-
     for ag_idx, task in tasks.items():
         for t in task:
             for _t in t.values():
                 # labeldict[tuple(_t[0])] = ag_idx
                 task_color_dict[tuple(_t[0])] = colors[ag_idx]
 
-    # t_colors = list()
-    # for c, t in enumerate(tasks.values()):
-    #     t_colors += [colors[c] for _ in range(len(t))]
-    #     for _t in t:
-    #         task_nodes.append(tuple(list(_t.values())[0][0]))
     task_node_list = list(task_color_dict.keys())
     node_color_list = list(task_color_dict.values())
 

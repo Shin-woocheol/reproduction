@@ -14,20 +14,44 @@ class Agent(nn.Module):
         self.device = torch.device(f"cuda:0" if torch.cuda.is_available() and gpu == True else "cpu")
         self.embedding_dim = embedding_dim
         #* option1
-        # self.init_node_embedding = nn.Linear(2, embedding_dim) #* node feature -> init node embedding.
+        self.init_node_embedding = nn.Linear(2, embedding_dim).to(self.device) #* node feature -> init node embedding.
+        #*o3
+        # self.init_node_embedding = nn.Sequential(
+        #     nn.Linear(2, embedding_dim),
+        #     nn.LeakyReLU()
+        # ).to(self.device)
         #* option2
-        self.init_node_embedding = nn.Sequential(
-            nn.Linear(2, embedding_dim),
-            nn.LeakyReLU(),
-            nn.Linear(embedding_dim, embedding_dim),
-            nn.LeakyReLU()
-        ).to(self.device)
+        # self.init_node_embedding = nn.Sequential(
+        #     nn.Linear(2, embedding_dim),
+        #     nn.LeakyReLU(),
+        #     nn.Linear(embedding_dim, embedding_dim),
+        #     nn.LeakyReLU()
+        # ).to(self.device)
         self.gnn = GNN(in_dim=embedding_dim, out_dim=embedding_dim, embedding_dim=embedding_dim, n_layers=gnn_layers,
                        residual=True, ef_dim=3).to(self.device) #* ef dim 3인게, A*, menhatten, obstacle proxy 3개
         self.bipartite_policy = Bipartite(embedding_dim).to(self.device)
         self.buffer = RolloutBuffer() 
         self.optimizer = torch.optim.Adam(self.parameters(), lr)
         self.losses = []
+
+        self.baseline = 0.0
+        self.alpha = 0.1
+        #running mean
+        # self.count = 0
+
+    def update_baseline(self, new_value): #EMV
+        if self.baseline == 0.0:
+            self.baseline = new_value
+        else:
+            self.baseline = self.alpha * new_value + (1 - self.alpha) * self.baseline
+
+    # def update_baseline(self, new_value): #running mean
+    #     self.count += 1
+    #     if self.baseline == 0.0:
+    #         self.baseline = new_value
+    #     else:
+    #         self.baseline += (new_value - self.baseline) / self.count
+        
 
     def forward(self, g, continuing_ag, joint_action_prev, train=True):
         g = g.to(self.device)
@@ -48,7 +72,7 @@ class Agent(nn.Module):
         policy_flat = policy_temp.flatten()  # (M*N,)
 
         for i in range(M):
-            print(f"policy : {policy_temp}\n")
+            # print(f"policy : {policy_temp}\n")
             if torch.all(policy_flat == 0):
                 break
 
@@ -58,7 +82,7 @@ class Agent(nn.Module):
             if train:
                 dist = torch.distributions.Categorical(policy_flat)
                 chosen_idx = dist.sample().item()
-                print(f"chosen_action : {policy_flat[chosen_idx]}\n")
+                # print(f"chosen_action : {policy_flat[chosen_idx]}\n")
             else:
                 chosen_idx = policy_flat.argmax().item()
 
@@ -83,6 +107,7 @@ class Agent(nn.Module):
         # 여기까지 오면 agent node의 feature는 task로 부터 message passing받았음. score layer에 넣기 직전 embedding
         # task에 대한 score반환. (M, N) shape
         score = self.bipartite_policy(g, out_nf)
+        # print(f"score : {score}\n")
         # Flatten (M, N) -> (M*N,)
         policy_1d = score.flatten() 
         softmax_1d = torch.softmax(policy_1d, dim=0)
@@ -102,9 +127,10 @@ class Agent(nn.Module):
         # ef = torch.stack([g.edata['astar_dist'], g.edata['man_dist']], -1)
         return nf, ef
     
-    def learn(self, baseline=0):
+    def learn(self):
         batch_traj = self.buffer.sample()
         total_loss = 0
+        total_makespan = 0
         for traj in batch_traj:
             gs, joint_action, next_t = list(map(list, zip(*traj)))
             #* option2. continuing을 선택하는 것도 action으로 보는 것.
@@ -122,18 +148,28 @@ class Agent(nn.Module):
             valid_policy = torch.clamp(valid_policy, min=1e-10) #* 안해주면 log시 -inf의 발생으로 weight가 nan으로 update됨.
             valid_policy_log = valid_policy.log()
             #* option1. continuing 제외 선택.
-            # pol_sum = torch.mean(valid_policy_log) #* valid action의 수가 다르니까 mean을 하는게 맞는 것 같음.
+            pol_sum = torch.mean(valid_policy_log) #* valid action의 수가 다르니까 mean을 하는게 맞는 것 같음.
             #* option2.
-            pol_sum = torch.sum(valid_policy_log) / num_tot_action
+            # pol_sum = torch.sum(valid_policy_log) / num_tot_action
+
             cost = torch.sum(next_t)
+            total_makespan += cost.item()
 
             # loss = -cost * pol_sum
             #* option 2
-            loss = -(1/cost * pol_sum)
+            # loss = -(1/cost * pol_sum)
+            #* option 3 
+            advantage = cost - self.baseline
+            loss = advantage * pol_sum
+            #* option 4
+            # advantage = cost - self.baseline
+            # loss = -(1/advantage * pol_sum)
 
             total_loss += loss
 
         total_loss /= len(batch_traj)
+        mean_makespan = total_makespan / len(batch_traj)
+        self.update_baseline(mean_makespan)
 
         self.optimizer.zero_grad()
         total_loss.backward()

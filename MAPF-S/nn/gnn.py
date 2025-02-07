@@ -40,14 +40,21 @@ class GNNLayer(nn.Module):
         # self.edge_embedding = nn.Sequential(nn.Linear(in_dim * 2 + ef_dim, out_dim, bias=False),
         #                                     nn.LeakyReLU())
         #* option2. 모든 neural net은 MLP with two layers of 128 unit
+        # self.node_embedding = nn.Sequential(nn.Linear(out_dim + in_dim, embedding_dim, bias=False),
+        #                                     nn.LeakyReLU(),
+        #                                     nn.Linear(embedding_dim, out_dim, bias=False),
+        #                                     nn.LeakyReLU())
+        # self.edge_embedding = nn.Sequential(nn.Linear(in_dim * 2 + ef_dim, embedding_dim, bias=False),
+        #                                     nn.LeakyReLU(),
+        #                                     nn.Linear(embedding_dim, out_dim, bias=False),
+        #                                     nn.LeakyReLU())
+        #* option3. -표현에 제약을 주지 않기
         self.node_embedding = nn.Sequential(nn.Linear(out_dim + in_dim, embedding_dim, bias=False),
                                             nn.LeakyReLU(),
-                                            nn.Linear(embedding_dim, out_dim, bias=False),
-                                            nn.LeakyReLU())
+                                            nn.Linear(embedding_dim, out_dim, bias=False))
         self.edge_embedding = nn.Sequential(nn.Linear(in_dim * 2 + ef_dim, embedding_dim, bias=False),
                                             nn.LeakyReLU(),
-                                            nn.Linear(embedding_dim, out_dim, bias=False),
-                                            nn.LeakyReLU())
+                                            nn.Linear(embedding_dim, out_dim, bias=False))
 
     def forward(self, g: dgl.DGLGraph, nf, ef):
         '''
@@ -94,13 +101,21 @@ class Bipartite(nn.Module): #* GNN을 통해서 agent node embedding을 얻고 �
     def __init__(self, embedding_dim):
         super(Bipartite, self).__init__()
         #* two layers of 128 units each and LeakyRelu
+        # self.score_layer = nn.Sequential( #* using pair of node embedding.
+        #     nn.Linear(2 * embedding_dim, embedding_dim, bias=False),
+        #     nn.BatchNorm1d(embedding_dim),
+        #     nn.LeakyReLU(),
+        #     nn.Linear(embedding_dim, 1, bias=False),
+        #     nn.BatchNorm1d(1),
+        #     nn.LeakyReLU()
+        # )
+        #* -표현 제한 x
         self.score_layer = nn.Sequential( #* using pair of node embedding.
             nn.Linear(2 * embedding_dim, embedding_dim, bias=False),
             nn.BatchNorm1d(embedding_dim),
             nn.LeakyReLU(),
             nn.Linear(embedding_dim, 1, bias=False),
-            nn.BatchNorm1d(1),
-            nn.LeakyReLU()
+            nn.BatchNorm1d(1)
         )
 
     def forward(self, g: dgl.DGLGraph, nf): #* nf는 GNN을 거쳐서 생성된 node embedding.
